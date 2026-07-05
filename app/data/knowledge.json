@@ -1,0 +1,577 @@
+{
+  "categories": ["Network", "Account", "OS", "Application"],
+
+  "articles": [
+
+    {
+      "id": "KB001",
+      "category": "Network",
+      "title": "Cannot connect to VPN",
+      "keywords": ["vpn", "network", "connection", "remote", "tunnel"],
+      "symptoms": [
+        "VPN client fails to connect",
+        "Connection timeout error",
+        "Authentication failed on VPN",
+        "VPN connects but no internet access"
+      ],
+      "steps": [
+        "Confirm the device has an active internet connection outside of VPN.",
+        "Restart the VPN client application completely.",
+        "Verify username and password are correct and the account is not locked.",
+        "Check that the VPN server address matches the one provided by IT.",
+        "Temporarily disable the firewall or antivirus and retry the connection.",
+        "Reinstall the VPN client if the issue persists.",
+        "Escalate to IT networking team if none of the above resolves the issue."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB002",
+      "category": "Network",
+      "title": "No internet access on wired connection",
+      "keywords": ["ethernet", "wired", "no internet", "LAN", "cable"],
+      "symptoms": [
+        "Ethernet cable is plugged in but no internet",
+        "Network icon shows connected but pages won't load",
+        "Limited connectivity on wired connection"
+      ],
+      "steps": [
+        "Check that the ethernet cable is firmly plugged into both the device and the wall port.",
+        "Try a different ethernet cable to rule out a faulty cable.",
+        "Restart the device and check again.",
+        "Run the Windows Network Troubleshooter or macOS Network Diagnostics.",
+        "Release and renew IP address: run 'ipconfig /release' then 'ipconfig /renew' on Windows.",
+        "Check if the network switch or wall port is active by testing with another device.",
+        "Escalate to IT networking team if the port or switch appears faulty."
+      ],
+      "severity": "high",
+      "escalate": true
+    },
+
+    {
+      "id": "KB003",
+      "category": "Network",
+      "title": "Slow or unstable Wi-Fi connection",
+      "keywords": ["wifi", "wireless", "slow", "unstable", "drops", "signal"],
+      "symptoms": [
+        "Wi-Fi keeps disconnecting",
+        "Very slow download or upload speed",
+        "High ping or packet loss on wireless"
+      ],
+      "steps": [
+        "Move closer to the Wi-Fi access point to improve signal strength.",
+        "Disconnect and reconnect to the Wi-Fi network.",
+        "Forget the network and reconnect by entering credentials again.",
+        "Restart the device's Wi-Fi adapter (disable then enable in network settings).",
+        "Check if other devices on the same network have the same issue.",
+        "If issue is network-wide, restart the router/access point.",
+        "Contact IT if the access point appears to be faulty or overloaded."
+      ],
+      "severity": "low",
+      "escalate": false
+    },
+
+    {
+      "id": "KB004",
+      "category": "Network",
+      "title": "Cannot access shared network drive",
+      "keywords": ["network drive", "shared folder", "mapped drive", "SMB", "file server"],
+      "symptoms": [
+        "Mapped drive shows as disconnected",
+        "Cannot browse to shared folder",
+        "Access denied when opening network drive"
+      ],
+      "steps": [
+        "Ensure you are connected to the corporate network or VPN.",
+        "Try accessing the drive via UNC path directly (e.g. \\\\servername\\share).",
+        "Check that your account has permission to access the share.",
+        "Re-map the drive: disconnect the existing mapping and reconnect.",
+        "Restart the Workstation and Server services via Windows Services panel.",
+        "Verify the file server is online by pinging its hostname.",
+        "Contact IT to verify your access permissions if the server is online."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB005",
+      "category": "Network",
+      "title": "Printer not found on network",
+      "keywords": ["printer", "network printer", "print", "offline", "not found"],
+      "symptoms": [
+        "Printer shows as offline",
+        "Cannot find network printer",
+        "Print jobs stuck in queue"
+      ],
+      "steps": [
+        "Confirm the printer is powered on and has paper and ink/toner.",
+        "Check that the printer is connected to the network (check its IP via its display panel).",
+        "Ping the printer IP from your device to verify connectivity.",
+        "Remove the printer from your device and re-add it using its IP address.",
+        "Clear the print queue: stop the Print Spooler service, delete files in C:\\Windows\\System32\\spool\\PRINTERS, restart the service.",
+        "Update or reinstall the printer driver.",
+        "Contact IT if the printer cannot be reached on the network."
+      ],
+      "severity": "low",
+      "escalate": false
+    },
+
+    {
+      "id": "KB006",
+      "category": "Account",
+      "title": "Account locked out",
+      "keywords": ["locked", "account", "lockout", "login", "password", "blocked"],
+      "symptoms": [
+        "Account is locked after too many failed login attempts",
+        "Receiving 'account locked' error on login",
+        "Cannot log in to any company system"
+      ],
+      "steps": [
+        "Wait 15 minutes — accounts auto-unlock after the lockout period in most configurations.",
+        "If urgent, contact the IT Help Desk with your employee ID for manual unlock.",
+        "After unlock, reset your password immediately to prevent re-lockout.",
+        "Check all devices (phone, tablet) that may be using your old credentials and update them.",
+        "If lockouts recur frequently, contact IT to investigate potential unauthorized access."
+      ],
+      "severity": "high",
+      "escalate": true
+    },
+
+    {
+      "id": "KB007",
+      "category": "Account",
+      "title": "Forgot or need to reset password",
+      "keywords": ["password", "reset", "forgot", "change", "expired"],
+      "symptoms": [
+        "Cannot remember current password",
+        "Password has expired",
+        "Prompted to change password on login"
+      ],
+      "steps": [
+        "Navigate to the self-service password reset portal at https://password.company.com.",
+        "Verify identity using your registered email or phone number.",
+        "Follow the on-screen steps to set a new password.",
+        "Ensure the new password meets policy requirements: minimum 12 characters, uppercase, lowercase, number, and symbol.",
+        "Update your password on all connected devices and applications.",
+        "Contact IT Help Desk if you cannot access the self-service portal."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB008",
+      "category": "Account",
+      "title": "Multi-factor authentication (MFA) not working",
+      "keywords": ["mfa", "two-factor", "authenticator", "otp", "2fa", "code"],
+      "symptoms": [
+        "MFA code not being received",
+        "Authenticator app not generating codes",
+        "MFA prompt loops without success"
+      ],
+      "steps": [
+        "Ensure your phone's time is synchronized (MFA codes are time-based).",
+        "Try generating a new code and enter it immediately.",
+        "Check that you are using the correct authenticator account if you have multiple.",
+        "If using SMS, verify your registered phone number is correct in your profile.",
+        "Use a backup code if available (stored during initial MFA setup).",
+        "Contact IT Help Desk to re-enroll your MFA device if none of the above works."
+      ],
+      "severity": "high",
+      "escalate": true
+    },
+
+    {
+      "id": "KB009",
+      "category": "Account",
+      "title": "Cannot access a specific application or system",
+      "keywords": ["access", "permission", "denied", "unauthorized", "role", "system"],
+      "symptoms": [
+        "Access denied when opening an internal system",
+        "Role or permission not assigned",
+        "System does not appear in user's portal"
+      ],
+      "steps": [
+        "Confirm you should have access by checking with your manager.",
+        "Log out and log back in to refresh your session and permissions.",
+        "Clear browser cache and cookies and try again.",
+        "Have your manager submit an access request through the IT portal.",
+        "Contact IT Help Desk referencing your manager's approval if the request is urgent."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB010",
+      "category": "Account",
+      "title": "New employee onboarding account setup",
+      "keywords": ["new employee", "onboarding", "setup", "new account", "first login"],
+      "symptoms": [
+        "New employee cannot log in on first day",
+        "Credentials not received",
+        "Account not yet created"
+      ],
+      "steps": [
+        "Contact the IT Help Desk with the employee's full name, start date, and department.",
+        "IT will provision the account within one business day of the confirmed start date.",
+        "Credentials will be sent to the employee's personal email or provided by their manager.",
+        "On first login, the employee must change their temporary password immediately.",
+        "Ensure the employee completes MFA enrollment before accessing any systems."
+      ],
+      "severity": "high",
+      "escalate": true
+    },
+
+    {
+      "id": "KB011",
+      "category": "OS",
+      "title": "Computer running slowly",
+      "keywords": ["slow", "performance", "lag", "freeze", "unresponsive", "hanging"],
+      "symptoms": [
+        "Applications take a long time to open",
+        "System freezes intermittently",
+        "High CPU or memory usage"
+      ],
+      "steps": [
+        "Restart the computer to clear memory and close background processes.",
+        "Open Task Manager (Ctrl+Shift+Esc) and identify high CPU or memory processes.",
+        "End any non-essential processes consuming excessive resources.",
+        "Check available disk space — ensure at least 10% of the drive is free.",
+        "Run a disk cleanup to remove temporary files.",
+        "Disable unnecessary startup programs via Task Manager > Startup tab.",
+        "Run a malware scan using the installed antivirus.",
+        "Contact IT if performance issues persist after all steps."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB012",
+      "category": "OS",
+      "title": "Blue screen of death (BSOD) on Windows",
+      "keywords": ["bsod", "blue screen", "crash", "stop error", "kernel panic", "windows crash"],
+      "symptoms": [
+        "Computer crashes with a blue screen",
+        "Error code shown on blue screen (e.g. KERNEL_SECURITY_CHECK_FAILURE)",
+        "System reboots unexpectedly"
+      ],
+      "steps": [
+        "Note the error code displayed on the blue screen.",
+        "Restart the computer and check if the issue recurs.",
+        "Boot into Safe Mode to determine if a driver or software is causing the crash.",
+        "Run Windows Memory Diagnostic to check for RAM issues.",
+        "Check Event Viewer for critical errors around the time of the crash.",
+        "Update or roll back recently installed drivers.",
+        "Run 'sfc /scannow' in an elevated command prompt to repair system files.",
+        "Escalate to IT immediately if BSODs are frequent — hardware failure may be involved."
+      ],
+      "severity": "critical",
+      "escalate": true
+    },
+
+    {
+      "id": "KB013",
+      "category": "OS",
+      "title": "Windows Update failing or stuck",
+      "keywords": ["windows update", "update", "stuck", "failed", "patch", "update error"],
+      "symptoms": [
+        "Windows Update stuck at a percentage",
+        "Update fails with an error code",
+        "Update keeps trying to install and failing"
+      ],
+      "steps": [
+        "Restart the computer and check if the update completes after reboot.",
+        "Run the Windows Update Troubleshooter from Settings > System > Troubleshoot.",
+        "Clear the Windows Update cache: stop Windows Update service, delete contents of C:\\Windows\\SoftwareDistribution\\Download, restart the service.",
+        "Ensure sufficient disk space is available (Windows Updates often require 10+ GB).",
+        "Try installing the update manually from the Microsoft Update Catalog using the KB number.",
+        "Contact IT if the update is a mandatory security patch and cannot be installed."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB014",
+      "category": "OS",
+      "title": "Cannot install software on managed device",
+      "keywords": ["install", "software", "blocked", "admin", "permissions", "managed"],
+      "symptoms": [
+        "Installation blocked by administrator",
+        "Requires admin credentials to install",
+        "Software installation greyed out"
+      ],
+      "steps": [
+        "Check if the software is available in the Company Software Center or portal.",
+        "Submit a software installation request through the IT portal with a business justification.",
+        "Wait for IT approval — standard requests are processed within 1-2 business days.",
+        "Do not attempt to bypass admin restrictions as this violates IT policy.",
+        "Contact IT Help Desk if the software is urgently needed for business continuity."
+      ],
+      "severity": "low",
+      "escalate": false
+    },
+
+    {
+      "id": "KB015",
+      "category": "OS",
+      "title": "Device not recognizing external USB or peripheral",
+      "keywords": ["usb", "peripheral", "device not recognized", "external drive", "mouse", "keyboard"],
+      "symptoms": [
+        "USB device not detected",
+        "External drive not showing up",
+        "Mouse or keyboard not working after plugging in"
+      ],
+      "steps": [
+        "Try a different USB port on the device.",
+        "Test the USB device on another computer to verify it works.",
+        "Restart the computer with the USB device plugged in.",
+        "Update USB drivers via Device Manager.",
+        "Check Device Manager for any error flags on unknown devices.",
+        "Check if USB ports are disabled by IT policy — some managed devices restrict USB access.",
+        "Contact IT if USB access is required but blocked by policy."
+      ],
+      "severity": "low",
+      "escalate": false
+    },
+
+    {
+      "id": "KB016",
+      "category": "Application",
+      "title": "Microsoft Office application crashes on launch",
+      "keywords": ["office", "word", "excel", "outlook", "powerpoint", "crash", "not opening"],
+      "symptoms": [
+        "Office application crashes immediately on open",
+        "Office shows 'stopped working' error",
+        "Application freezes on splash screen"
+      ],
+      "steps": [
+        "Launch the application in Safe Mode: hold Ctrl while clicking the app icon.",
+        "If it opens in Safe Mode, disable add-ins one by one to find the culprit (File > Options > Add-ins).",
+        "Run the Office Repair tool from Control Panel > Programs > Microsoft Office > Change > Repair.",
+        "Check for and install pending Office updates.",
+        "Delete the Office application's cache folder (location varies by app and version).",
+        "Reinstall the Office application if repair does not resolve the issue.",
+        "Contact IT if the issue persists after reinstallation."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB017",
+      "category": "Application",
+      "title": "Cannot send or receive emails in Outlook",
+      "keywords": ["outlook", "email", "send", "receive", "stuck", "not syncing"],
+      "symptoms": [
+        "Emails stuck in Outbox",
+        "Outlook not receiving new emails",
+        "Outlook shows 'Disconnected' or 'Trying to connect' status"
+      ],
+      "steps": [
+        "Check your internet connection — Outlook requires connectivity to sync.",
+        "Look at the status bar at the bottom of Outlook for connection status.",
+        "Click Send/Receive All Folders (F9) to force a sync.",
+        "Restart Outlook and check if the issue resolves.",
+        "Check if Outlook is set to Work Offline mode (Send/Receive tab > Work Offline).",
+        "Remove and re-add your email account in Outlook settings.",
+        "Contact IT if the mail server may be experiencing issues affecting multiple users."
+      ],
+      "severity": "high",
+      "escalate": false
+    },
+
+    {
+      "id": "KB018",
+      "category": "Application",
+      "title": "Video conferencing tool not detecting camera or microphone",
+      "keywords": ["zoom", "teams", "camera", "microphone", "audio", "video", "conference"],
+      "symptoms": [
+        "Camera not detected in Zoom or Teams",
+        "Microphone not working during calls",
+        "No audio output during video calls"
+      ],
+      "steps": [
+        "Check that the camera and microphone are physically connected and not muted.",
+        "Check OS privacy settings to ensure the conferencing app has permission to use the camera and microphone.",
+        "Select the correct input/output device within the conferencing app's audio/video settings.",
+        "Close any other applications that may be using the camera or microphone.",
+        "Restart the conferencing application.",
+        "Update the camera and microphone drivers via Device Manager.",
+        "Contact IT if hardware appears to be faulty."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB019",
+      "category": "Application",
+      "title": "Browser not loading internal web applications",
+      "keywords": ["browser", "internal", "web app", "portal", "intranet", "loading", "blank page"],
+      "symptoms": [
+        "Internal web app shows blank page",
+        "Browser cannot reach internal URL",
+        "Intranet site throws SSL or certificate error"
+      ],
+      "steps": [
+        "Ensure you are connected to the corporate network or VPN.",
+        "Clear browser cache and cookies and reload the page.",
+        "Try opening the internal app in a different browser.",
+        "Check if the internal site's SSL certificate has expired and report to IT.",
+        "Disable browser extensions temporarily and retry.",
+        "Add the internal domain to your browser's trusted sites list.",
+        "Contact IT if the web application server may be down."
+      ],
+      "severity": "medium",
+      "escalate": false
+    },
+
+    {
+      "id": "KB020",
+      "category": "Application",
+      "title": "Company ERP or CRM system login failure",
+      "keywords": ["erp", "crm", "sap", "salesforce", "business system", "login", "failed"],
+      "symptoms": [
+        "Cannot log in to the ERP or CRM system",
+        "Session timeout immediately after login",
+        "License error when accessing business system"
+      ],
+      "steps": [
+        "Verify you are using your correct company credentials (these may differ from your Windows login).",
+        "Check if your license or subscription is active in the system.",
+        "Clear browser cookies for the application's domain and retry.",
+        "Try a different supported browser (check the system's documentation for supported browsers).",
+        "Check if the system is undergoing scheduled maintenance.",
+        "Contact IT or the system administrator to verify your account status and license."
+      ],
+      "severity": "high",
+      "escalate": true
+    }
+  ],
+
+  "policies": [
+    {
+      "id": "POL001",
+      "title": "Password Policy",
+      "category": "Account",
+      "content": "All user passwords must be a minimum of 12 characters and include at least one uppercase letter, one lowercase letter, one number, and one special character. Passwords expire every 90 days. Users cannot reuse any of their last 10 passwords. Password sharing is strictly prohibited."
+    },
+    {
+      "id": "POL002",
+      "title": "Account Lockout Policy",
+      "category": "Account",
+      "content": "Accounts are automatically locked after 5 consecutive failed login attempts. The lockout duration is 15 minutes, after which the account automatically unlocks. For immediate unlock, users must contact the IT Help Desk with valid identification."
+    },
+    {
+      "id": "POL003",
+      "title": "Software Installation Policy",
+      "category": "Application",
+      "content": "Users are not permitted to install unauthorized software on company devices. All software installations must be approved by IT and the user's line manager. Approved software is deployed via the Company Software Center. Requests are processed within 1-2 business days."
+    },
+    {
+      "id": "POL004",
+      "title": "USB and Removable Media Policy",
+      "category": "OS",
+      "content": "The use of personal USB drives and removable media on company devices is restricted. Only IT-approved encrypted USB devices may be used. Connecting unauthorized USB devices may trigger a security alert. Contact IT to request an approved encrypted drive."
+    },
+    {
+      "id": "POL005",
+      "title": "Remote Access and VPN Policy",
+      "category": "Network",
+      "content": "All remote access to company resources must be made through the approved VPN client. Users must not share VPN credentials. The VPN must be active whenever accessing internal systems from outside the office network. VPN sessions are limited to 8 hours and require re-authentication."
+    },
+    {
+      "id": "POL006",
+      "title": "Data Handling and Classification Policy",
+      "category": "Application",
+      "content": "Company data is classified as Public, Internal, Confidential, or Restricted. Confidential and Restricted data must not be stored on personal devices or shared via personal email. All file transfers of sensitive data must use approved secure channels only."
+    },
+    {
+      "id": "POL007",
+      "title": "IT Support Escalation Policy",
+      "category": "Network",
+      "content": "Issues unresolved after Level 1 troubleshooting are escalated to Level 2 support within 4 business hours. Critical issues affecting multiple users or core business systems are escalated immediately. Users will be notified of escalation status via their registered email."
+    }
+  ],
+
+  "faqs": [
+    {
+      "id": "FAQ001",
+      "category": "Account",
+      "question": "How do I reset my password?",
+      "answer": "Visit the self-service password reset portal at https://password.company.com. Verify your identity via your registered email or phone, then follow the prompts to set a new password. If you cannot access the portal, contact the IT Help Desk."
+    },
+    {
+      "id": "FAQ002",
+      "category": "Account",
+      "question": "How long does an account lockout last?",
+      "answer": "Account lockouts automatically expire after 15 minutes. If you need immediate access, contact the IT Help Desk with your employee ID for a manual unlock."
+    },
+    {
+      "id": "FAQ003",
+      "category": "Network",
+      "question": "What VPN client should I use for remote access?",
+      "answer": "The company uses Cisco AnyConnect as the approved VPN client. It can be downloaded from the IT portal. Contact IT for the VPN server address and your access credentials."
+    },
+    {
+      "id": "FAQ004",
+      "category": "Application",
+      "question": "How do I request a new software installation?",
+      "answer": "Submit a request through the IT portal at https://itportal.company.com. Provide the software name, version, business justification, and your manager's approval. Requests are processed within 1-2 business days."
+    },
+    {
+      "id": "FAQ005",
+      "category": "OS",
+      "question": "How do I check if my Windows updates are up to date?",
+      "answer": "Go to Settings > Windows Update and click 'Check for updates'. Ensure all critical and security updates are installed. If an update fails, contact IT for assistance."
+    },
+    {
+      "id": "FAQ006",
+      "category": "Network",
+      "question": "How do I connect to a mapped network drive?",
+      "answer": "Open File Explorer, click 'This PC', then 'Map network drive'. Enter the UNC path provided by IT (e.g. \\\\fileserver\\yourdepartment). Ensure you are on the corporate network or connected via VPN."
+    },
+    {
+      "id": "FAQ007",
+      "category": "Application",
+      "question": "What should I do if Outlook stops syncing emails?",
+      "answer": "First check your internet connection. Then press F9 in Outlook to force a sync. Ensure Outlook is not set to Work Offline mode under the Send/Receive tab. If the issue persists, restart Outlook or contact IT."
+    },
+    {
+      "id": "FAQ008",
+      "category": "Account",
+      "question": "How do I set up multi-factor authentication (MFA)?",
+      "answer": "Download the Microsoft Authenticator app on your phone. Go to your account settings at https://myaccount.company.com and select 'Security Info'. Click 'Add method', choose Authenticator app, and follow the QR code scan process."
+    },
+    {
+      "id": "FAQ009",
+      "category": "OS",
+      "question": "Can I use a personal USB drive on my company laptop?",
+      "answer": "No. Only IT-approved encrypted USB devices are permitted. Using unauthorized USB drives may trigger a security alert and could result in a policy violation. Contact IT to request an approved encrypted USB drive."
+    },
+    {
+      "id": "FAQ010",
+      "category": "Application",
+      "question": "My camera isn't working in Microsoft Teams. What do I do?",
+      "answer": "Check that your camera is connected and not in use by another app. In Teams, go to Settings > Devices and select the correct camera. Ensure Teams has camera access in your OS privacy settings (Settings > Privacy > Camera)."
+    },
+    {
+      "id": "FAQ011",
+      "category": "Network",
+      "question": "Who do I contact if the office internet is completely down?",
+      "answer": "Contact the IT Help Desk immediately at helpdesk@company.com or call the IT hotline. Network outages affecting the whole office are treated as critical incidents and are escalated to the networking team within 30 minutes."
+    },
+    {
+      "id": "FAQ012",
+      "category": "Account",
+      "question": "How do I request access to a system I don't currently have access to?",
+      "answer": "Ask your line manager to submit an access request on your behalf through the IT portal. Access provisioning typically takes 1 business day. Emergency access requests can be flagged as urgent and may be processed within 2 hours."
+    }
+  ]
+}
