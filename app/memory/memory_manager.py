@@ -227,6 +227,9 @@ class MemoryManager:
 
     def set_intent(self, intent: str) -> None:
         """Update the current intent."""
+        if not intent or not isinstance(intent, str):
+            raise ValueError("Intent must be a non-empty string.")
+
         self.working.current_intent = intent
 
     def set_workflow_state(self, state: str) -> None:
@@ -252,20 +255,33 @@ class MemoryManager:
         """Create a confirmation gate before a state-changing action."""
         self.working.set_pending_confirmation(action, details)
 
-    def confirm_action(self) -> Optional[dict[str, Any]]:
+    def confirm_action(self) -> dict[str, Any]:
         """
         Return the pending action and clear it.
 
         The orchestrator or UI should call this only after explicit user confirmation.
         """
         pending = self.working.pending_confirmation
+        if pending is None:
+            raise ValueError("No pending confirmation to confirm.")
+        
         self.working.clear_pending_confirmation()
+        self.working.missing_required_fields= [
+            field 
+            for field in self.working.missing_required_fields
+              if field != "user_confirmation"
+        ]
         self.working.workflow_state = "confirmed_action"
         return pending
 
     def cancel_action(self) -> None:
         """Cancel a pending action."""
         self.working.clear_pending_confirmation()
+        self.working.missing_required_fields= [
+            field 
+            for field in self.working.missing_required_fields
+              if field != "user_confirmation"
+        ]
         self.working.workflow_state = "action_cancelled"
 
     def store_tool_result(
