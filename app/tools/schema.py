@@ -45,3 +45,28 @@ class Issue(BaseModel):
 class Error(BaseModel):
     error: str
     message: str
+    
+class OpenTicketInput(BaseModel):
+    user_id: str
+    user_name: str
+    title: str
+    description: str
+    category: IssueCategory
+    priority: Literal['low', 'medium', 'high', 'critical']
+
+class OpenTicketOutput(BaseModel):
+    ticket_id: str
+    status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    created_at: str
+
+class UpdateTicketInput(BaseModel):
+    ticket_id: str
+    new_status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    changed_by: str
+    note: str
+
+class UpdateTicketOutput(BaseModel):
+    ticket_id: str
+    old_status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    new_status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    updated_at: str
