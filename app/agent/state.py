@@ -1,36 +1,41 @@
 from typing import TypedDict, List, Optional, Annotated
 from enum import Enum
 from langgraph.graph.message import add_message
+from langchain_core.messages import BaseMessage
 
 class WorkflowStage(Enum):
+    IDLE = 'idle'
     GATHERING = 'gathering'
     ANALYSIS = 'analysis'
+    AWAITING_CONFIRMATION = 'awaiting_confirmation'
     ACTION = 'action'
     REPORTING = 'reporting'
-    
-class IssueCategory(Enum):
-    NETWORK = 'Network'
-    ACCOUNT = 'Account'
-    OS = 'OS'
-    APP = 'Application'
-    UNKNOWN ='unknown'
-    
+    ESCALATING = 'escalating'
+    RESOLVED = 'resolved'
+
 class AgentState(TypedDict):
-    messages: Annotated[list, add_message]
-    stage: WorkflowStage
-    
+    messages: Annotated[List[BaseMessage], add_message]
+
     # Gathering
+    user_info: Optional[dict]
     symptoms: List[str]
-    user_id: Optional[str]
-
-    # Analysis
-    issue_category: IssueCategory
-    kb_articles: List[dict]
     
-    # Action
-    user_confirmed: bool
+    # Workflow
+    workflow_stage: WorkflowStage
+    remaining_iterations: int
+    
+    # Tool results
+    classification_result: Optional[dict]
+    knowledge_result: Optional[dict]
     ticket_id: Optional[str]
+    report: Optional[dict]
+    
+    # Action control
+    pending_confirmation: bool
+    pending_action: Optional[str]
+    pending_action_args: Optional[dict]
+    
+    # Fallback
+    fallback_triggered: bool
+    fallback_reason: Optional[str]
 
-    # Reporting
-    reporting: Optional[str]
-    resolved: bool
