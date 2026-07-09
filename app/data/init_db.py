@@ -38,6 +38,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS tickets (
     ticket_id        TEXT PRIMARY KEY,
     user_id          TEXT NOT NULL,
+    user_name        TEXT NOT NULL,
     title            TEXT NOT NULL,
     description      TEXT NOT NULL,
     category         TEXT NOT NULL CHECK (
@@ -90,6 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_history_changed_at
 SEED_TICKETS = [
     {
         "user_id": "user_jane_doe",
+        "user_name": "Jane Doe",
         "title": "VPN not connecting",
         "description": "User cannot connect to corporate VPN since this morning.",
         "category": "Network",
@@ -99,6 +101,7 @@ SEED_TICKETS = [
     },
     {
         "user_id": "user_mark_lee",
+        "user_name": "Mark Lee",
         "title": "Laptop won't power on",
         "description": "Laptop screen stays black, no LED indicators.",
         "category": "OS",
@@ -123,6 +126,7 @@ def connect() -> sqlite3.Connection:
     """Create a SQLite connection with foreign keys enabled."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -168,6 +172,7 @@ def validate_ticket_fields(category: str, priority: str, status: str) -> None:
 def create_ticket(
     conn: sqlite3.Connection,
     user_id: str,
+    user_name: str,
     title: str,
     description: str,
     category: str,
@@ -197,6 +202,7 @@ def create_ticket(
             INSERT INTO tickets (
                 ticket_id,
                 user_id,
+                user_name,
                 title,
                 description,
                 category,
@@ -208,11 +214,12 @@ def create_ticket(
                 updated_at,
                 resolved_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, NULL)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, NULL)
             """,
             (
                 ticket_id,
                 user_id,
+                user_name,
                 title,
                 description,
                 category,
@@ -244,6 +251,102 @@ def create_ticket(
 
     except Exception:
         conn.rollback()
+        raise
+
+def update_ticket(
+    conn: sqlite3.Connection,
+    ticket_id: str,
+    new_status: str,
+    changed_by: str,
+    note: str,
+    resolution_notes: Optional[str] = None
+) -> str:
+    """
+    Update a existing ticket with input ticket_id.
+
+    action_tool.py can call this function directly instead of duplicating
+    ticket ID logic.
+    """
+    if new_status not in VALID_STATUSES:
+        raise ValueError(f"Invalid status: {new_status}")
+
+    now = utc_now()
+
+    # Prevent two writers from generating the same ticket ID at the same time.
+    conn.execute("BEGIN IMMEDIATE;")
+
+    try:
+        cur = conn.cursor()
+        
+        cur.execute(
+            'SELECT status, resolved_at FROM tickets WHERE ticket_id = ?',
+            (ticket_id,)
+        )
+        ticket = cur.fetchone()
+        
+        if not ticket:
+            raise ValueError(f"Ticket not found: {ticket_id}")
+        
+        old_status = ticket['status']
+        resolved_at = now if new_status == 'resolved' else ticket['resolved_at']
+
+        cur.execute(
+            """
+            UPDATE tickets SET
+                status = ?,
+                resolution_notes = ?,
+                updated_at = ?,
+                resolved_at = ?
+            WHERE ticket_id = ?
+            """,
+            (
+                new_status,
+                resolution_notes,
+                now,
+                resolved_at,
+                ticket_id,
+            ),
+        )
+
+        cur.execute(
+            """
+            INSERT INTO ticket_history (
+                ticket_id,
+                old_status,
+                new_status,
+                changed_by,
+                note,
+                changed_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ticket_id,
+                old_status,
+                new_status,
+                changed_by,
+                note,
+                now,
+            ),
+        )
+
+        conn.commit()
+        return ticket_id
+
+    except Exception:
+        conn.rollback()
+        raise
+
+def fetch_ticket_by_id(conn: sqlite3.Connection, ticket_id: str):
+    """Fetches a ticket from table given a ticket_id"""
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT * from tickets WHERE ticket_id = ?',
+            (ticket_id,)
+        )
+        return cur.fetchone()
+    except Exception:
         raise
 
 

@@ -45,3 +45,57 @@ class Issue(BaseModel):
 class Error(BaseModel):
     error: str
     message: str
+    
+class OpenTicketInput(BaseModel):
+    user_id: str
+    user_name: str
+    title: str
+    description: str
+    category: IssueCategory
+    priority: Literal['low', 'medium', 'high', 'critical']
+
+class OpenTicketOutput(BaseModel):
+    ticket_id: str
+    status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    created_at: str
+
+class UpdateTicketInput(BaseModel):
+    ticket_id: str
+    new_status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    changed_by: str
+    note: str
+
+class UpdateTicketOutput(BaseModel):
+    ticket_id: str
+    old_status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    new_status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    updated_at: str
+
+class GenerateReportInput(BaseModel):
+    ticket_id: str
+    steps_provided: str
+    handoff_required: bool
+
+class ReportUser(BaseModel):
+    user_id: str
+    user_name: str
+
+class ReportIssue(BaseModel):
+    title: str
+    category: IssueCategory
+    severity: Literal['low', 'medium', 'high', 'critical']
+
+class ReportTicket(BaseModel):
+    status: Literal['open', 'in_progress', 'pending_user', 'resolved', 'closed']
+    created_at: str
+    resolved_at: str
+    resolution_notes: str
+
+class Report(BaseModel):
+    ticket_id: str
+    generated_at: str
+    user: ReportUser
+    issue: ReportIssue
+    steps_provided: list[str]
+    ticket: ReportTicket
+    handoff_required: bool
