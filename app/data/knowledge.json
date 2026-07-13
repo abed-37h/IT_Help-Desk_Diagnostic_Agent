@@ -7,7 +7,7 @@
       "id": "KB001",
       "category": "Network",
       "title": "Cannot connect to VPN",
-      "keywords": ["vpn", "network", "connection", "remote", "tunnel"],
+      "keywords": ["vpn", "network", "connection", "remote", "tunnel", "vpn not connecting", "cannot connect vpn", "vpn connection failed", "vpn timeout", "vpn authentication failed", "vpn no internet", "remote access", "anyconnect", "cisco anyconnect", "secure tunnel", "vpn disconnected", "vpn error", "unable to connect remotely"],
       "symptoms": [
         "VPN client fails to connect",
         "Connection timeout error",
@@ -31,7 +31,7 @@
       "id": "KB002",
       "category": "Network",
       "title": "No internet access on wired connection",
-      "keywords": ["ethernet", "wired", "no internet", "LAN", "cable"],
+      "keywords": ["ethernet", "wired", "no internet", "LAN", "cable", "ethernet not working", "wired connection not working", "lan not working", "no connection", "internet unavailable", "cable connection", "network cable unplugged", "limited internet", "connected no internet", "ethernet connected no internet", "wired network", "wall port", "network port", "ip address issue", "dhcp"],
       "symptoms": [
         "Ethernet cable is plugged in but no internet",
         "Network icon shows connected but pages won't load",
@@ -54,7 +54,7 @@
       "id": "KB003",
       "category": "Network",
       "title": "Slow or unstable Wi-Fi connection",
-      "keywords": ["wifi", "wireless", "slow", "unstable", "drops", "signal"],
+      "keywords": ["wifi", "wireless", "slow", "unstable", "drops", "signal", "wi-fi", "wifi slow", "slow internet", "weak wifi", "weak signal", "poor signal", "wifi disconnecting", "wifi keeps dropping", "wireless disconnecting", "intermittent wifi", "packet loss", "high latency", "high ping", "low speed", "internet lag", "wireless network", "wifi unstable"],
       "symptoms": [
         "Wi-Fi keeps disconnecting",
         "Very slow download or upload speed",
@@ -77,7 +77,7 @@
       "id": "KB004",
       "category": "Network",
       "title": "Cannot access shared network drive",
-      "keywords": ["network drive", "shared folder", "mapped drive", "SMB", "file server"],
+      "keywords": ["network drive", "shared folder", "mapped drive", "SMB", "file server", "shared drive", "drive not accessible", "mapped drive disconnected", "cannot open shared folder", "file share", "network share", "shared folder access denied", "drive mapping", "unc path", "server share", "fileserver", "department drive", "shared files", "network folder", "drive unavailable"],
       "symptoms": [
         "Mapped drive shows as disconnected",
         "Cannot browse to shared folder",
@@ -100,7 +100,7 @@
       "id": "KB005",
       "category": "Network",
       "title": "Printer not found on network",
-      "keywords": ["printer", "network printer", "print", "offline", "not found"],
+      "keywords": ["printer", "network printer", "print", "offline", "not found", "printer offline", "cannot print", "printer unavailable", "printer not detected", "printer not showing", "add printer", "print queue", "stuck print job", "printing problem", "printer connection", "printer ip", "spooler", "print spooler", "network printing", "printer driver"],
       "symptoms": [
         "Printer shows as offline",
         "Cannot find network printer",
@@ -123,7 +123,7 @@
       "id": "KB006",
       "category": "Account",
       "title": "Account locked out",
-      "keywords": ["locked", "account", "lockout", "login", "password", "blocked"],
+      "keywords": ["locked", "account", "lockout", "login", "password", "blocked", "account locked", "user locked out", "too many login attempts", "login locked", "cannot sign in", "sign in blocked", "locked profile", "unlock account", "domain account locked", "credentials locked", "access blocked", "failed login attempts", "temporary lockout"],
       "symptoms": [
         "Account is locked after too many failed login attempts",
         "Receiving 'account locked' error on login",
@@ -144,7 +144,7 @@
       "id": "KB007",
       "category": "Account",
       "title": "Forgot or need to reset password",
-      "keywords": ["password", "reset", "forgot", "change", "expired"],
+      "keywords": ["password", "reset", "forgot", "change", "expired", "forgot password", "reset password", "change password", "password expired", "password recovery", "cannot remember password", "new password", "self service password reset", "sspr", "password portal", "update credentials", "login password", "recover account"],
       "symptoms": [
         "Cannot remember current password",
         "Password has expired",
@@ -166,7 +166,7 @@
       "id": "KB008",
       "category": "Account",
       "title": "Multi-factor authentication (MFA) not working",
-      "keywords": ["mfa", "two-factor", "authenticator", "otp", "2fa", "code"],
+      "keywords": ["mfa", "two-factor", "authenticator", "otp", "2fa", "code", "multi factor authentication", "multi-factor authentication", "two factor authentication", "two-factor authentication", "verification code", "security code", "one time password", "one-time password", "code not received", "authenticator not working", "microsoft authenticator", "sms code", "mfa loop", "mfa failed", "mfa reset", "re-enroll mfa", "backup code"],
       "symptoms": [
         "MFA code not being received",
         "Authenticator app not generating codes",
@@ -188,7 +188,7 @@
       "id": "KB009",
       "category": "Account",
       "title": "Cannot access a specific application or system",
-      "keywords": ["access", "permission", "denied", "unauthorized", "role", "system"],
+      "keywords": ["access", "permission", "denied", "unauthorized", "role", "system", "access denied", "permission denied", "not authorized", "unauthorised", "missing access", "missing permission", "request access", "application access", "system access", "role missing", "entitlement", "forbidden", "403", "not in portal", "cannot open application"],
       "symptoms": [
         "Access denied when opening an internal system",
         "Role or permission not assigned",
@@ -209,7 +209,7 @@
       "id": "KB010",
       "category": "Account",
       "title": "New employee onboarding account setup",
-      "keywords": ["new employee", "onboarding", "setup", "new account", "first login"],
+      "keywords": ["new employee", "onboarding", "setup", "new account", "first login", "new hire", "new starter", "employee setup", "account provisioning", "first day login", "temporary password", "credentials missing", "new user", "user creation", "onboarding account", "employee account", "starter account", "first login issue", "account not provisioned", "new joiner"],
       "symptoms": [
         "New employee cannot log in on first day",
         "Credentials not received",
@@ -230,7 +230,7 @@
       "id": "KB011",
       "category": "OS",
       "title": "Computer running slowly",
-      "keywords": ["slow", "performance", "lag", "freeze", "unresponsive", "hanging"],
+      "keywords": ["slow", "performance", "lag", "freeze", "unresponsive", "hanging", "computer slow", "pc slow", "laptop slow", "system slow", "running slow", "poor performance", "application lag", "computer freezing", "computer hangs", "not responding", "high cpu", "high memory", "high ram", "disk full", "slow startup", "slow boot", "performance issue"],
       "symptoms": [
         "Applications take a long time to open",
         "System freezes intermittently",
@@ -254,7 +254,7 @@
       "id": "KB012",
       "category": "OS",
       "title": "Blue screen of death (BSOD) on Windows",
-      "keywords": ["bsod", "blue screen", "crash", "stop error", "kernel panic", "windows crash"],
+      "keywords": ["bsod", "blue screen", "crash", "stop error", "kernel panic", "windows crash", "blue screen of death", "windows blue screen", "stop code", "stopcode", "system crash", "computer crash", "random reboot", "unexpected restart", "windows rebooting", "critical error", "driver crash", "memory error", "hardware failure", "kernel security check failure", "bugcheck"],
       "symptoms": [
         "Computer crashes with a blue screen",
         "Error code shown on blue screen (e.g. KERNEL_SECURITY_CHECK_FAILURE)",
@@ -278,7 +278,7 @@
       "id": "KB013",
       "category": "OS",
       "title": "Windows Update failing or stuck",
-      "keywords": ["windows update", "update", "stuck", "failed", "patch", "update error"],
+      "keywords": ["windows update", "update", "stuck", "failed", "patch", "update error", "windows update failed", "windows update stuck", "update not installing", "update installation failed", "update frozen", "pending update", "security update", "cumulative update", "kb update", "patch failed", "error code", "softwaredistribution", "update loop", "restart required", "windows patching"],
       "symptoms": [
         "Windows Update stuck at a percentage",
         "Update fails with an error code",
@@ -300,7 +300,7 @@
       "id": "KB014",
       "category": "OS",
       "title": "Cannot install software on managed device",
-      "keywords": ["install", "software", "blocked", "admin", "permissions", "managed"],
+      "keywords": ["install", "software", "blocked", "admin", "permissions", "managed", "cannot install software", "software install blocked", "administrator rights", "admin rights", "admin password", "installation denied", "install permission", "managed laptop", "company device", "software center", "application installation", "installer blocked", "need admin access", "program install", "unauthorized software"],
       "symptoms": [
         "Installation blocked by administrator",
         "Requires admin credentials to install",
@@ -321,7 +321,7 @@
       "id": "KB015",
       "category": "OS",
       "title": "Device not recognizing external USB or peripheral",
-      "keywords": ["usb", "peripheral", "device not recognized", "external drive", "mouse", "keyboard"],
+      "keywords": ["usb", "peripheral", "device not recognized", "external drive", "mouse", "keyboard", "usb not working", "usb not detected", "usb device not recognized", "external drive not detected", "flash drive", "thumb drive", "pendrive", "removable drive", "usb port", "mouse not detected", "keyboard not detected", "peripheral not working", "unknown device", "device manager", "external hard drive", "usb blocked"],
       "symptoms": [
         "USB device not detected",
         "External drive not showing up",
@@ -344,7 +344,7 @@
       "id": "KB016",
       "category": "Application",
       "title": "Microsoft Office application crashes on launch",
-      "keywords": ["office", "word", "excel", "outlook", "powerpoint", "crash", "not opening"],
+      "keywords": ["office", "word", "excel", "outlook", "powerpoint", "crash", "not opening", "microsoft office", "word not opening", "excel not opening", "outlook not opening", "powerpoint not opening", "office not opening", "office crash", "word crash", "excel crash", "outlook crash", "powerpoint crash", "stopped working", "splash screen", "office safe mode", "office repair", "office freezes"],
       "symptoms": [
         "Office application crashes immediately on open",
         "Office shows 'stopped working' error",
@@ -367,7 +367,7 @@
       "id": "KB017",
       "category": "Application",
       "title": "Cannot send or receive emails in Outlook",
-      "keywords": ["outlook", "email", "send", "receive", "stuck", "not syncing"],
+      "keywords": ["outlook", "email", "send", "receive", "stuck", "not syncing", "outlook not sending", "outlook not receiving", "email not sending", "email not receiving", "mail not syncing", "outlook disconnected", "trying to connect", "emails stuck in outbox", "outbox stuck", "send receive error", "work offline", "mailbox not updating", "new emails missing", "email sync issue", "exchange connection", "outlook offline"],
       "symptoms": [
         "Emails stuck in Outbox",
         "Outlook not receiving new emails",
@@ -390,7 +390,7 @@
       "id": "KB018",
       "category": "Application",
       "title": "Video conferencing tool not detecting camera or microphone",
-      "keywords": ["zoom", "teams", "camera", "microphone", "audio", "video", "conference"],
+      "keywords": ["zoom", "teams", "camera", "microphone", "audio", "video", "conference", "camera not working", "microphone not working", "mic not working", "webcam not working", "camera not detected", "microphone not detected", "teams camera", "teams microphone", "zoom camera", "zoom microphone", "no sound", "no audio", "audio not working", "video not working", "meeting audio", "meeting camera", "input device", "output device", "device permission"],
       "symptoms": [
         "Camera not detected in Zoom or Teams",
         "Microphone not working during calls",
@@ -413,7 +413,7 @@
       "id": "KB019",
       "category": "Application",
       "title": "Browser not loading internal web applications",
-      "keywords": ["browser", "internal", "web app", "portal", "intranet", "loading", "blank page"],
+      "keywords": ["browser", "internal", "web app", "portal", "intranet", "loading", "blank page", "internal site not loading", "intranet not working", "portal not loading", "web application not loading", "blank screen", "blank webpage", "cannot reach internal site", "internal url", "ssl error", "certificate error", "site unavailable", "browser issue", "cache cookies", "trusted sites", "internal website", "page not loading", "web portal"],
       "symptoms": [
         "Internal web app shows blank page",
         "Browser cannot reach internal URL",
@@ -436,7 +436,7 @@
       "id": "KB020",
       "category": "Application",
       "title": "Company ERP or CRM system login failure",
-      "keywords": ["erp", "crm", "sap", "salesforce", "business system", "login", "failed"],
+      "keywords": ["erp", "crm", "sap", "salesforce", "business system", "login", "failed", "erp login", "crm login", "sap login", "salesforce login", "business application", "enterprise system", "login failure", "cannot sign in", "session timeout", "license error", "license expired", "account inactive", "system maintenance", "application credentials", "business system access", "erp access", "crm access", "sap access", "salesforce access"],
       "symptoms": [
         "Cannot log in to the ERP or CRM system",
         "Session timeout immediately after login",
