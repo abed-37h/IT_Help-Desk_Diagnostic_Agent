@@ -7,6 +7,7 @@ Current purpose:
 - Store assistant messages in short-term memory.
 - Store intent, collected info, missing fields, confirmation state,
   latest tool result, and workflow state in working memory.
+- Load and display persistent long-term memory from SQLite.
 - Show memory in the sidebar for debugging/observability.
 
 Placeholder logic will later be replaced by app/agent/orchestrator.py.
@@ -37,9 +38,13 @@ st.set_page_config(
 def init_state() -> None:
     """
     Create one MemoryManager per Streamlit session.
+
+    Short-term and working memory live in Streamlit session state.
+    Long-term memory is persisted in the project SQLite database.
     """
     if "memory" not in st.session_state:
-        st.session_state.memory = MemoryManager()
+        database_path = PROJECT_ROOT / "data" / "memory.db"
+        st.session_state.memory = MemoryManager(db_path=database_path)
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +91,7 @@ def update_memory_for_troubleshooting(user_message: str) -> tuple[str, str]:
     if "vpn" in lowered:
         memory.collect_info("category", "network")
         memory.collect_info("symptoms", ["VPN not connecting"])
-        memory.require_fields(["device_os", "vpn_error_message"])
+        memory.require_fields(["operating_system", "vpn_error_message"])
 
         return (
             "InfoTool (KnowledgeBaseTool)",
@@ -197,7 +202,16 @@ def run_placeholder_agent(user_message: str) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 def render_sidebar() -> None:
     """
-    Render memory/debug information.
+    Render session and memory information in the sidebar.
+
+    The sidebar displays:
+    - current user
+    - short-term memory
+    - working memory
+    - persistent long-term memory
+
+    Long-term preferences will later be written automatically
+    by the orchestrator.
     """
     memory = st.session_state.memory
     context = memory.get_context()
@@ -220,13 +234,22 @@ def render_sidebar() -> None:
         st.subheader("Working Memory")
         st.json(context["working"])
 
+        st.subheader("Long-term Memory")
+        st.json(context["long_term"])
+
+        database_path = PROJECT_ROOT / "data" / "memory.db"
+
+        st.caption(
+            f"Database: {database_path}"
+        )
+
         st.divider()
 
         if st.button("Reset current task"):
             memory.reset_current_task()
             st.rerun()
 
-        if st.button("Reset all memory"):
+        if st.button("Reset session memory"):
             memory.reset_all()
             st.rerun()
 
@@ -252,11 +275,11 @@ def render_chat_history() -> None:
 
 def handle_name_capture() -> bool:
     """
-    Capture the user's name before starting the chat.
+    Capture and validate the user's name before starting the chat.
 
     Returns:
-        True if user is already known.
-        False if still waiting for name.
+        True if a valid user is already known.
+        False if the application is still waiting for a name.
     """
     memory = st.session_state.memory
     context = memory.get_context()
@@ -264,13 +287,26 @@ def handle_name_capture() -> bool:
     if context["short_term"]["user_name"] is not None:
         return True
 
-    name = st.chat_input("Before we start, what's your name?")
+    name = st.chat_input(
+        "Before we start, what's your name?"
+    )
 
     if name:
-        memory.set_user(name)
+        try:
+            memory.set_user(name)
+        except ValueError as error:
+            st.error(str(error))
+            return False
+
         memory.set_workflow_state("awaiting_user")
 
-        greeting = f"Nice to meet you, {name}! What IT issue can I help with today?"
+        cleaned_name = memory.get_context()["short_term"]["user_name"]
+
+        greeting = (
+            f"Nice to meet you, {cleaned_name}! "
+            "What IT issue can I help with today?"
+        )
+
         memory.add_assistant_message(greeting)
 
         st.rerun()
