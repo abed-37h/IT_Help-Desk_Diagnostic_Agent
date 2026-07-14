@@ -1,6 +1,6 @@
 from typing import TypedDict, List, Optional, Annotated
 from enum import Enum
-from langgraph.graph.message import add_message
+from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
 
 class WorkflowStage(Enum):
@@ -14,7 +14,7 @@ class WorkflowStage(Enum):
     RESOLVED = 'resolved'
 
 class AgentState(TypedDict):
-    messages: Annotated[List[BaseMessage], add_message]
+    messages: Annotated[List[BaseMessage], add_messages]
 
     # Gathering
     user_info: Optional[dict]

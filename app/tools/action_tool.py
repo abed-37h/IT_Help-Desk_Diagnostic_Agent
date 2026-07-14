@@ -11,14 +11,14 @@ from app.data.init_db import (
 
 from app.tools.schema import (
     IssueCategory,
-    CreateTicketInput,
-    CreateTicketOutput,
+    OpenTicketInput,
+    OpenTicketOutput,
     UpdateTicketInput,
     UpdateTicketOutput,
     Error,
 )
 
-@tool(args_schema=CreateTicketInput)
+@tool(args_schema=OpenTicketInput)
 def open_support_ticket(
     user_id: str,
     user_name: str,
@@ -26,7 +26,7 @@ def open_support_ticket(
     description: str,
     category: IssueCategory,
     priority: Literal['low', 'medium', 'high', 'critical'],
-) -> CreateTicketOutput | Error:
+) -> OpenTicketOutput | Error:
     '''
     Creates a new incident support ticket in the IT database. Only call this tool 
     after the user has explicitly confirmed they want to open a ticket. Before 
@@ -50,7 +50,7 @@ def open_support_ticket(
             
             ticket = fetch_ticket_by_id(conn, ticket_id)
             
-            return CreateTicketOutput(
+            return OpenTicketOutput(
                 ticket_id=ticket['ticket_id'],
                 status=ticket['status'],
                 created_at=ticket['created_at']
