@@ -1,4 +1,6 @@
 streamlit
 anthropic
+langchain-google-genai
 langgraph
 pydantic
+python-dotenv

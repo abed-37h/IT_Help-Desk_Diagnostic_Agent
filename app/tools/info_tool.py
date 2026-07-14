@@ -54,3 +54,10 @@ def fetch_issue_knowledge(issue_id: str) -> Issue | Error:
         escalate=target_issue['escalate'],
         source='knowledge.json',
     )
+
+if __name__ == '__main__':
+    result = fetch_issue_knowledge.invoke({
+        'issue_id': 'KB004'
+    })
+    
+    print(result)
