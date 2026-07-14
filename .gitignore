@@ -220,3 +220,15 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .env
+
+
+@'
+
+# Runtime long-term memory databases
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
+data/backups/
+app/memory_data/
+'@ | Add-Content .\.gitignore

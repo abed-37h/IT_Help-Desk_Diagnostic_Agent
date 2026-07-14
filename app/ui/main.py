@@ -1,165 +1,404 @@
 """
 app/ui/main.py — Streamlit interface for the IT Help-Desk Diagnostic Agent.
 
-Design choices tied directly to the project proposal:
-- Short-term memory: captures the user's name once, reuses it all session.
-- Working memory: explicit dict tracking intent, collected info, missing
-  fields, pending confirmation, last tool result, and workflow state —
-  rendered in the sidebar for observability/grading purposes.
-- Confirmation gate: ticket creation (a state-changing action) requires an
-  explicit button click before it "executes".
-- Tool visibility: each reply is tagged with which placeholder tool ran,
-  so it's obvious which of the four tools (info/analysis/action/report)
-  handled the turn.
+Current purpose:
+- Connect Streamlit UI to MemoryManager.
+- Store user messages in short-term memory.
+- Store assistant messages in short-term memory.
+- Store intent, collected info, missing fields, confirmation state,
+  latest tool result, and workflow state in working memory.
+- Load and display persistent long-term memory from SQLite.
+- Show memory in the sidebar for debugging/observability.
 
-Everything under "PLACEHOLDER LOGIC" gets replaced by real calls into
-app/agent/orchestrator.py once it exists. The UI structure itself
-(session state, sidebar, confirmation flow) should not need to change.
+Placeholder logic will later be replaced by app/agent/orchestrator.py.
 """
+from pathlib import Path
+import sys
 
 import streamlit as st
 
-st.set_page_config(page_title="IT Help Desk Assistant", page_icon="", layout="wide")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from app.memory.memory_manager import MemoryManager
+
+
+st.set_page_config(
+    page_title="IT Help Desk Assistant",
+    page_icon="🛠️",
+    layout="wide",
+)
 
 
 # ---------------------------------------------------------------------------
 # Session state setup
 # ---------------------------------------------------------------------------
-def init_state():
-    if "user_name" not in st.session_state:
-        st.session_state.user_name = None
+def init_state() -> None:
+    """
+    Create one MemoryManager per Streamlit session.
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    if "working_memory" not in st.session_state:
-        st.session_state.working_memory = {
-            "current_intent": None,
-            "collected_info": {},
-            "missing_fields": [],
-            "pending_confirmation": None,   # e.g. {"action": "create_ticket", "details": {...}}
-            "last_tool_result": None,
-            "workflow_state": "awaiting_name",
-        }
+    Short-term and working memory live in Streamlit session state.
+    Long-term memory is persisted in the project SQLite database.
+    """
+    if "memory" not in st.session_state:
+        database_path = PROJECT_ROOT / "data" / "memory.db"
+        st.session_state.memory = MemoryManager(db_path=database_path)
 
 
 # ---------------------------------------------------------------------------
 # PLACEHOLDER LOGIC — replace with orchestrator calls later
 # ---------------------------------------------------------------------------
 def classify_intent(text: str) -> str:
+    """
+    Temporary intent classifier.
+
+    Later, this will move to DiagnosticTool / orchestrator.
+    """
     text = text.lower()
+
     if "ticket" in text or "create a ticket" in text or "log this" in text:
         return "create_ticket"
-    if "vpn" in text or "password" in text or "printer" in text or "wifi" in text or "network" in text:
-        return "troubleshoot"
-    return "unknown"
+
+    if (
+        "vpn" in text
+        or "password" in text
+        or "printer" in text
+        or "wifi" in text
+        or "wi-fi" in text
+        or "network" in text
+        or "internet" in text
+    ):
+        return "troubleshoot_issue"
+
+    return "unsupported_request"
 
 
-def run_placeholder_tool(intent: str, user_message: str):
-    """Returns (tool_name, reply_text). Stands in for real tool calls."""
-    if intent == "troubleshoot":
+def update_memory_for_troubleshooting(user_message: str) -> tuple[str, str]:
+    """
+    Placeholder troubleshooting logic.
+
+    Returns:
+        tool_name, reply_text
+    """
+    memory = st.session_state.memory
+    lowered = user_message.lower()
+
+    memory.set_intent("troubleshoot_issue")
+    memory.set_workflow_state("information_gathering")
+
+    if "vpn" in lowered:
+        memory.collect_info("category", "network")
+        memory.collect_info("symptoms", ["VPN not connecting"])
+        memory.require_fields(["operating_system", "vpn_error_message"])
+
         return (
             "InfoTool (KnowledgeBaseTool)",
-            "Based on the knowledge base: check your connection, restart the "
-            "affected client/app, and confirm your credentials are current. "
-            "(Placeholder — will be replaced with a real KB lookup.)",
+            "I understand your VPN is not connecting. "
+            "Please tell me your device OS and the exact VPN error message you see.",
         )
-    elif intent == "create_ticket":
-        return ("ActionTool (TicketTool)", "__PENDING_CONFIRMATION__")
-    else:
+
+    if "wifi" in lowered or "wi-fi" in lowered or "internet" in lowered or "network" in lowered:
+        memory.collect_info("category", "network")
+        memory.collect_info("symptoms", ["network connectivity issue"])
+        memory.require_fields(["connection_type", "affected_devices"])
+
         return (
-            "Fallback",
-            "I'm not fully able to handle that yet. I can help with network, "
-            "account, OS, or application issues, or open a support ticket for you.",
+            "InfoTool (KnowledgeBaseTool)",
+            "This sounds like a network issue. "
+            "Are you using Wi-Fi or Ethernet, and is the issue only on your device?",
         )
 
+    if "password" in lowered or "account" in lowered:
+        memory.collect_info("category", "account")
+        memory.collect_info("symptoms", ["account access issue"])
+        memory.require_fields(["account_type", "error_message"])
+
+        return (
+            "InfoTool (KnowledgeBaseTool)",
+            "This sounds like an account issue. "
+            "Which account are you trying to access, and what error message appears?",
+        )
+
+    if "printer" in lowered:
+        memory.collect_info("category", "hardware")
+        memory.collect_info("symptoms", ["printer issue"])
+        memory.require_fields(["printer_name", "error_message"])
+
+        return (
+            "InfoTool (KnowledgeBaseTool)",
+            "This sounds like a printer issue. "
+            "Please tell me the printer name and the error message shown.",
+        )
+
+    memory.collect_info("category", "unknown")
+    memory.collect_info("symptoms", [user_message])
+    memory.require_fields(["issue_details"])
+
+    return (
+        "Fallback",
+        "I can help troubleshoot this. "
+        "Please describe the device, application, and any error message.",
+    )
+
+
+def request_ticket_confirmation(user_message: str) -> str:
+    """
+    Placeholder ticket confirmation logic.
+
+    Does not create a ticket immediately.
+    It only stores a pending confirmation in memory.
+    """
+    memory = st.session_state.memory
+
+    memory.set_intent("create_ticket")
+    memory.set_workflow_state("awaiting_confirmation")
+    memory.collect_info("ticket_summary", user_message)
+    memory.require_fields(["user_confirmation"])
+
+    memory.request_confirmation(
+        action="create_ticket",
+        details={
+            "title": user_message,
+            "category": memory.get_context()["working"]["collected_info"].get("category", "unknown"),
+            "priority": "medium",
+        },
+    )
+
+    return "I can create a support ticket for this. Please confirm using the button below."
+
+
+def run_placeholder_agent(user_message: str) -> tuple[str, str]:
+    """
+    Temporary agent logic until orchestrator.py is ready.
+
+    Returns:
+        tool_name, assistant_reply
+    """
+    intent = classify_intent(user_message)
+
+    if intent == "create_ticket":
+        reply = request_ticket_confirmation(user_message)
+        return "ActionTool (TicketTool)", reply
+
+    if intent == "troubleshoot_issue":
+        return update_memory_for_troubleshooting(user_message)
+
+    st.session_state.memory.set_intent("unsupported_request")
+    st.session_state.memory.set_workflow_state("human_handoff")
+    st.session_state.memory.collect_info("category", "unknown")
+    st.session_state.memory.require_fields(["supported_issue_type"])
+
+    return (
+        "Fallback",
+        "I'm not fully able to handle that yet. "
+        "I can help with network, account, operating system, application, or hardware issues.",
+    )
+
 
 # ---------------------------------------------------------------------------
-# UI: sidebar (working memory / observability panel)
+# UI helpers
 # ---------------------------------------------------------------------------
-def render_sidebar():
-    wm = st.session_state.working_memory
+def render_sidebar() -> None:
+    """
+    Render session and memory information in the sidebar.
+
+    The sidebar displays:
+    - current user
+    - short-term memory
+    - working memory
+    - persistent long-term memory
+
+    Long-term preferences will later be written automatically
+    by the orchestrator.
+    """
+    memory = st.session_state.memory
+    context = memory.get_context()
+
     with st.sidebar:
+        st.subheader("Session")
+
+        user_name = context["short_term"]["user_name"]
+
+        if user_name:
+            st.success(f"Current user: {user_name}")
+        else:
+            st.warning("No user set yet.")
+
+        st.divider()
+
+        st.subheader("Short-term Memory")
+        st.json(context["short_term"])
+
         st.subheader("Working Memory")
-        st.write(f"**Workflow state:** `{wm['workflow_state']}`")
-        st.write(f"**Current intent:** `{wm['current_intent']}`")
-        st.write("**Collected info:**")
-        st.json(wm["collected_info"] or {})
-        st.write(f"**Missing fields:** {wm['missing_fields'] or 'none'}")
-        st.write(f"**Pending confirmation:** {wm['pending_confirmation'] or 'none'}")
-        st.write("**Last tool result:**")
-        st.json(wm["last_tool_result"] or {})
+        st.json(context["working"])
+
+        st.subheader("Long-term Memory")
+        st.json(context["long_term"])
+
+        database_path = PROJECT_ROOT / "data" / "memory.db"
+
+        st.caption(
+            f"Database: {database_path}"
+        )
+
+        st.divider()
+
+        if st.button("Reset current task"):
+            memory.reset_current_task()
+            st.rerun()
+
+        if st.button("Reset session memory"):
+            memory.reset_all()
+            st.rerun()
+
+
+def render_chat_history() -> None:
+    """
+    Render chat messages stored inside MemoryManager.
+    """
+    context = st.session_state.memory.get_context()
+    messages = context["short_term"]["recent_messages"]
+
+    for message in messages:
+        role = message["role"]
+        content = message["content"]
+        tool = message.get("tool")
+
+        if role in {"user", "assistant"}:
+            with st.chat_message(role):
+                st.markdown(content)
+                if tool:
+                    st.caption(f"🔧 Tool used: {tool}")
+
+
+def handle_name_capture() -> bool:
+    """
+    Capture and validate the user's name before starting the chat.
+
+    Returns:
+        True if a valid user is already known.
+        False if the application is still waiting for a name.
+    """
+    memory = st.session_state.memory
+    context = memory.get_context()
+
+    if context["short_term"]["user_name"] is not None:
+        return True
+
+    name = st.chat_input(
+        "Before we start, what's your name?"
+    )
+
+    if name:
+        try:
+            memory.set_user(name)
+        except ValueError as error:
+            st.error(str(error))
+            return False
+
+        memory.set_workflow_state("awaiting_user")
+
+        cleaned_name = memory.get_context()["short_term"]["user_name"]
+
+        greeting = (
+            f"Nice to meet you, {cleaned_name}! "
+            "What IT issue can I help with today?"
+        )
+
+        memory.add_assistant_message(greeting)
+
+        st.rerun()
+
+    return False
+
+
+def handle_pending_confirmation() -> bool:
+    """
+    Handle confirmation gate before state-changing actions.
+
+    Returns:
+        True if confirmation is pending and input should be blocked.
+        False if no confirmation is pending.
+    """
+    memory = st.session_state.memory
+    context = memory.get_context()
+    pending = context["working"]["pending_confirmation"]
+
+    if not pending:
+        return False
+
+    st.warning(f"Confirm action: **{pending['action']}**")
+
+    col1, col2 = st.columns(2)
+
+    if col1.button("✅ Confirm"):
+        confirmed_action = memory.confirm_action()
+
+        # Placeholder ticket creation.
+        # Later this will call TicketTool.
+        ticket_id = "TCK-0003"
+
+        memory.store_tool_result(
+            tool_name="TicketTool",
+            result={
+                "ticket_id": ticket_id,
+                "status": "open",
+                "confirmed_action": confirmed_action,
+            },
+        )
+
+        memory.set_workflow_state("reporting")
+
+        reply = f"Ticket **{ticket_id}** has been created. You'll get updates by email."
+        memory.add_assistant_message(reply, tool="ActionTool (TicketTool)")
+
+        st.rerun()
+
+    if col2.button("❌ Cancel"):
+        memory.cancel_action()
+
+        reply = "Okay, I won't create a ticket."
+        memory.add_assistant_message(reply)
+
+        st.rerun()
+
+    return True
 
 
 # ---------------------------------------------------------------------------
-# UI: main chat flow
+# Main UI
 # ---------------------------------------------------------------------------
-def main():
+def main() -> None:
     init_state()
-    render_sidebar()
 
-    st.title("IT Help Desk Assistant")
+    st.title("IT Help Desk Assistant 🛠️")
     st.caption(
         "This assistant provides decision support for common IT issues. "
         "It does not replace your IT department for urgent or critical problems."
     )
 
-    # --- Step 1: capture the user's name (short-term memory requirement) ---
-    if st.session_state.user_name is None:
-        name = st.chat_input("Before we start, what's your name?")
-        if name:
-            st.session_state.user_name = name
-            st.session_state.working_memory["workflow_state"] = "chatting"
-            st.session_state.messages.append(
-                {"role": "assistant", "content": f"Nice to meet you, {name}! What IT issue can I help with today?"}
-            )
-            st.rerun()
+    render_sidebar()
+
+    if not handle_name_capture():
         return
 
-    # --- Render existing conversation ---
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if message.get("tool"):
-                st.caption(f"🔧 Tool used: {message['tool']}")
+    render_chat_history()
 
-    # --- Handle a pending confirmation gate first, if one exists ---
-    wm = st.session_state.working_memory
-    if wm["pending_confirmation"]:
-        st.warning(f"Confirm action: **{wm['pending_confirmation']['action']}**")
-        col1, col2 = st.columns(2)
-        if col1.button("✅ Confirm"):
-            ticket_id = "TCK-0003"  # placeholder — real version calls TicketTool
-            reply = f"Ticket **{ticket_id}** has been created. You'll get updates by email."
-            st.session_state.messages.append({"role": "assistant", "content": reply, "tool": "ActionTool (TicketTool)"})
-            wm["last_tool_result"] = {"ticket_id": ticket_id, "status": "open"}
-            wm["pending_confirmation"] = None
-            wm["workflow_state"] = "chatting"
-            st.rerun()
-        if col2.button("❌ Cancel"):
-            st.session_state.messages.append({"role": "assistant", "content": "Okay, I won't create a ticket."})
-            wm["pending_confirmation"] = None
-            wm["workflow_state"] = "chatting"
-            st.rerun()
-        return  # block new input until confirmation is resolved
+    if handle_pending_confirmation():
+        return
 
-    # --- Normal chat input ---
     user_input = st.chat_input("Describe your issue...")
+
     if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
+        memory = st.session_state.memory
 
-        intent = classify_intent(user_input)
-        wm["current_intent"] = intent
-        wm["workflow_state"] = f"handling_{intent}"
+        memory.add_user_message(user_input)
 
-        tool_name, reply = run_placeholder_tool(intent, user_input)
+        tool_name, reply = run_placeholder_agent(user_input)
 
-        if reply == "__PENDING_CONFIRMATION__":
-            wm["pending_confirmation"] = {"action": "create_ticket", "details": {"summary": user_input}}
-            wm["workflow_state"] = "awaiting_confirmation"
-        else:
-            wm["last_tool_result"] = {"tool": tool_name, "summary": reply[:60]}
-            st.session_state.messages.append({"role": "assistant", "content": reply, "tool": tool_name})
+        memory.add_assistant_message(reply, tool=tool_name)
 
         st.rerun()
 

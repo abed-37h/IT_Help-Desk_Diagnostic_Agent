@@ -18,14 +18,19 @@ This module handles:
    - latest tool result
    - current workflow state
 
-Long-term memory can be added later as an optional bonus feature.
+3. Long-term memory:
+   - persistent user information stored in SQLite
+   - stable preferences and useful facts that survive application restarts
 """
 
 from __future__ import annotations
-
-from dataclasses import dataclass, field, asdict
+import re
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
+
+from app.memory.long_term_memory import LongTermMemoryStore
 
 
 def utc_now() -> str:
@@ -35,9 +40,7 @@ def utc_now() -> str:
 
 @dataclass
 class ChatMessage:
-    """
-    Represents one message in the conversation.
-    """
+    """Represents one message in the conversation."""
 
     role: str
     content: str
@@ -167,9 +170,7 @@ class WorkingMemory:
         }
 
     def reset_task(self) -> None:
-        """
-        Reset the current task state, but keep the short-term conversation memory.
-        """
+        """Reset current task state but keep conversation memory."""
         self.current_intent = None
         self.collected_info.clear()
         self.missing_required_fields.clear()
@@ -183,12 +184,17 @@ class MemoryManager:
     Main memory interface used by the UI and orchestrator.
 
     The UI should create one MemoryManager per Streamlit session.
-    The orchestrator can read and update it during the agent workflow.
+    Long-term data is stored separately in SQLite and loaded after set_user().
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        db_path: str | Path = "data/memory.db",
+    ) -> None:
         self.short_term = ShortTermMemory()
         self.working = WorkingMemory()
+        self.long_term_store = LongTermMemoryStore(db_path)
+        self.long_term: dict[str, Any] = {}
 
     def set_user(
         self,
@@ -196,18 +202,49 @@ class MemoryManager:
         user_id: Optional[str] = None,
     ) -> None:
         """
-        Store the current user's identity for this active session.
+        Store the current user's identity and load their
+        persistent long-term memory.
         """
-        if not user_name or not isinstance(user_name, str):
-            raise ValueError("user_name must be a non-empty string.")
+        if not isinstance(user_name, str):
+            raise ValueError("user_name must be a string.")
 
-        self.short_term.user_name = user_name.strip()
+        cleaned_name = " ".join(user_name.split())
 
-        if user_id:
-            self.short_term.user_id = user_id.strip()
+        if not cleaned_name:
+            raise ValueError("user_name cannot be empty.")
+
+        self.short_term.user_name = cleaned_name
+
+        if user_id is not None:
+            if not isinstance(user_id, str):
+                raise ValueError("user_id must be a string.")
+
+            cleaned_user_id = user_id.strip()
+
+            if not cleaned_user_id:
+                raise ValueError("user_id cannot be empty.")
+
+            resolved_user_id = cleaned_user_id
+
         else:
-            safe_name = self.short_term.user_name.lower().replace(" ", "_")
-            self.short_term.user_id = f"user_{safe_name}"
+            safe_name = re.sub(
+                r"[^\w]+",
+                "_",
+                cleaned_name.casefold(),
+            ).strip("_")
+
+            if not safe_name:
+                raise ValueError(
+                    "The name must contain at least one letter or number."
+                )
+
+            resolved_user_id = f"user_{safe_name}"
+
+        self.short_term.user_id = resolved_user_id
+
+        self.long_term = self.long_term_store.get_all(
+            resolved_user_id
+        )
 
     def add_user_message(self, content: str) -> None:
         """Add a user message to short-term memory."""
@@ -240,7 +277,7 @@ class MemoryManager:
         self.working.workflow_state = state
 
     def collect_info(self, key: str, value: Any) -> None:
-        """Store collected information about the user's issue."""
+        """Store collected information about the user's current issue."""
         self.working.update_collected_info(key, value)
 
     def require_fields(self, fields: list[str]) -> None:
@@ -256,20 +293,16 @@ class MemoryManager:
         self.working.set_pending_confirmation(action, details)
 
     def confirm_action(self) -> dict[str, Any]:
-        """
-        Return the pending action and clear it.
-
-        The orchestrator or UI should call this only after explicit user confirmation.
-        """
+        """Return and clear the pending action after explicit confirmation."""
         pending = self.working.pending_confirmation
         if pending is None:
             raise ValueError("No pending confirmation to confirm.")
-        
+
         self.working.clear_pending_confirmation()
-        self.working.missing_required_fields= [
-            field 
+        self.working.missing_required_fields = [
+            field
             for field in self.working.missing_required_fields
-              if field != "user_confirmation"
+            if field != "user_confirmation"
         ]
         self.working.workflow_state = "confirmed_action"
         return pending
@@ -277,10 +310,10 @@ class MemoryManager:
     def cancel_action(self) -> None:
         """Cancel a pending action."""
         self.working.clear_pending_confirmation()
-        self.working.missing_required_fields= [
-            field 
+        self.working.missing_required_fields = [
+            field
             for field in self.working.missing_required_fields
-              if field != "user_confirmation"
+            if field != "user_confirmation"
         ]
         self.working.workflow_state = "action_cancelled"
 
@@ -292,16 +325,41 @@ class MemoryManager:
         """Store the result returned by a tool."""
         self.working.set_tool_result(tool_name, result)
 
-    def get_context(self) -> dict[str, Any]:
-        """
-        Return all memory as a dictionary.
+    def _require_current_user_id(self) -> str:
+        """Return the active user ID or raise a clear error."""
+        user_id = self.short_term.user_id
+        if user_id is None:
+            raise ValueError(
+                "A user must be set before accessing long-term memory."
+            )
+        return user_id
 
-        Useful for:
-        - orchestrator input
-        - debugging
-        - Streamlit sidebar
-        - evaluation traces
-        """
+    def remember(self, key: str, value: Any) -> None:
+        """Save or update persistent information for the current user."""
+        user_id = self._require_current_user_id()
+        self.long_term_store.save(user_id=user_id, key=key, value=value)
+        self.long_term[key.strip()] = value
+
+    def recall(self, key: str, default: Any = None) -> Any:
+        """Return one value from the current user's loaded long-term memory."""
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError("Memory key must be a non-empty string.")
+        return self.long_term.get(key.strip(), default)
+
+    def forget(self, key: str) -> None:
+        """Delete one persistent memory value for the current user."""
+        user_id = self._require_current_user_id()
+        self.long_term_store.delete(user_id=user_id, key=key)
+        self.long_term.pop(key.strip(), None)
+
+    def clear_long_term_memory(self) -> None:
+        """Permanently delete all persistent memory for the current user."""
+        user_id = self._require_current_user_id()
+        self.long_term_store.clear_user(user_id)
+        self.long_term.clear()
+
+    def get_context(self) -> dict[str, Any]:
+        """Return short-term, working, and loaded long-term memory."""
         return {
             "short_term": {
                 "user_id": self.short_term.user_id,
@@ -309,6 +367,7 @@ class MemoryManager:
                 "recent_messages": self.short_term.get_recent_messages(),
             },
             "working": asdict(self.working),
+            "long_term": self.long_term.copy(),
         }
 
     def reset_current_task(self) -> None:
@@ -316,6 +375,11 @@ class MemoryManager:
         self.working.reset_task()
 
     def reset_all(self) -> None:
-        """Reset short-term and working memory."""
+        """
+        Reset session memory without deleting persistent database records.
+
+        Long-term memory is loaded again when set_user() is called.
+        """
         self.short_term = ShortTermMemory()
         self.working = WorkingMemory()
+        self.long_term = {}
