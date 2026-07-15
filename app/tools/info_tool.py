@@ -22,12 +22,10 @@ KNOWLEDGE = _load_knowledge()
 @tool(args_schema=FetchIssueInput)
 def fetch_issue_knowledge(issue_id: str) -> Issue | Error:
     '''
-    Retrieves the full troubleshooting steps, severity, and escalation flag for 
-    a specific IT issue from the knowledge base. Always call this tool after 
-    classify_and_validate returns is_valid: true and confidence above 0.3. Pass 
-    the issue_id exactly as returned by classify_and_validate. Present the 
-    returned steps to the user in a clear numbered format. If escalate is true, 
-    inform the user that the issue requires human technician escalation.
+    Retrieve the approved knowledge-base entry for a classified issue.
+
+    Returns grounded symptoms, troubleshooting steps, severity, and escalation guidance.
+    Returns an error when the issue_id is unknown.
     '''
     
     target_issue = next(
