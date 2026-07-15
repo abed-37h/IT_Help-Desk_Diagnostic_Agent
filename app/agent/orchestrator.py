@@ -19,6 +19,8 @@ from app.agent.state import AgentState
 from app.agent.prompt import SYSTEM_PROMPT
 from app.agent.utils import format_report
 
+import app.logger.orchestrator_logger as logger
+
 # ---------------------------- Initialize database --------------------------- #
 
 init_db()
@@ -72,6 +74,12 @@ def handle_open_ticket(state: AgentState, args: dict) -> dict:
     category = state.get('category', IssueCategory.UNKNOWN.value)
     priority = state.get('severity', 'medium')
     
+    logger.log_confirmation_request(request={
+        'action': 'open_ticket',
+        'title': args.get('title'),
+        'description': args.get('description'),
+    })
+    
     approved = interrupt({
         'type': 'approval',
         'content': "I couldn't resolve this with the available troubleshooting steps. "
@@ -85,6 +93,11 @@ def handle_open_ticket(state: AgentState, args: dict) -> dict:
             error='open_ticket_rejected',
             message='Opening a ticket was rejected',
         )
+        
+    logger.log_confirmation_response(response={
+        'action': 'open_ticket',
+        'approved': approved,
+    })
 
     result = open_support_ticket.invoke({
         'user_id': user_info.get('user_id'),
@@ -95,9 +108,18 @@ def handle_open_ticket(state: AgentState, args: dict) -> dict:
         'priority': priority,
     })
     
+    logger.log_ticket_creation(result.ticket_id)
+    
     return result
 
 def handle_update_ticket(state: AgentState, args: dict) -> dict:
+    logger.log_confirmation_request(request={
+        'action': 'update_ticket',
+        'ticket_id': state.get('ticket_id'),
+        'new_status': args.get('new_status'),
+        'note': args.get('note'),
+    })
+    
     approved = interrupt({
         'type': 'approval',
         'content': f"I can update ticket {state.get('ticket_id')} "
@@ -118,6 +140,8 @@ def handle_update_ticket(state: AgentState, args: dict) -> dict:
         'note': args.get('note'),
     })
     
+    logger.log_ticket_update(state.get('ticket_id'))
+    
     return result
 
 def handle_generate_report(state: AgentState, args: dict) -> dict:
@@ -132,6 +156,8 @@ def handle_generate_report(state: AgentState, args: dict) -> dict:
 # ---------------------------------------------------------------------------- #
 
 def agent(state: AgentState) -> AgentState:
+    logger.log_state_update('agent', state)
+    
     update = {}
     
     last_message = state.get('messages')[-1]
@@ -158,6 +184,8 @@ def agent(state: AgentState) -> AgentState:
             last_message
         ])
         if user_info:
+            logger.log_extracted_info(user_info.model_dump())
+            
             update['user_info'] = {
                 **state.get('user_info', {}),
                 **user_info.model_dump(exclude_none=True),
@@ -193,6 +221,8 @@ def execute_tool(state: AgentState) -> AgentState:
     for tool_call in last_message.tool_calls:
         result = ''
         tool_name = tool_call['name']
+        
+        logger.log_tool_execution(tool_name)
         
         match tool_name:
             case 'classify_and_validate':
@@ -236,11 +266,15 @@ def execute_tool(state: AgentState) -> AgentState:
                     message=f'Unsupported tool: {tool_name}',
                 )
             
+        logger.log_tool_result(tool_name, result.model_dump())
+        
         tool_messages.append(ToolMessage(
             content=str(result.model_dump()),
             tool_call_id=tool_call['id'],
             name=tool_name,
         ))
+    
+    logger.log_state_update('execute_tool', update)
     
     return {
         'messages': tool_messages,
@@ -285,6 +319,8 @@ def invoke_agent(graph: CompiledStateGraph, user_message: str, session_id: str) 
     Send a user message into the graph using the provided session_id.
     '''
     
+    logger.log_workflow_event('session_started', session_id)
+    
     return graph.invoke(
         {'messages': [HumanMessage(user_message)]},
         config={'configurable': {'thread_id': session_id}},
@@ -295,6 +331,8 @@ def resume_workflow(graph: CompiledStateGraph, feedback: Any, session_id: str) -
     Resume a graph paused by interrupt(), using the user's feedback.
     '''
 
+    logger.log_workflow_event('session_resumed', session_id)
+    
     return graph.invoke(
         Command(resume=feedback),
         config={'configurable': {'thread_id': session_id}},
