@@ -2,7 +2,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt, Command
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage, RemoveMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import ValidationError
 from functools import wraps
@@ -439,6 +439,8 @@ def route(state: AgentState) -> str:
     last_message = state['messages'][-1]
     if getattr(last_message, "tool_calls", None):
         return 'tools'
+    if len(state['messages'] > 6):
+        return 'summarize_conversation'
     return 'end'
 
 def execute_tool(state: AgentState) -> AgentState:
@@ -519,6 +521,27 @@ def execute_tool(state: AgentState) -> AgentState:
         **update
     }
 
+def summarize_conversation(state: AgentState):
+    summary = state.get("summary", "")
+
+    if summary:
+        summary_message = (
+            f"This is summary of the conversation to date: {summary}\n\n"
+            "Extend the summary by taking into account the new messages above:"
+        )
+    else:
+        summary_message = "Create a summary of the conversation above:"
+
+    messages = state["messages"] + [HumanMessage(content=summary_message)]
+    response = llm.invoke(messages)
+    
+    # Delete all but the 2 most recent messages
+    delete_messages = [RemoveMessage(id=m.id) for m in state["messages"][:-2]]
+    return {
+        "summary": response.content,
+        "messages": delete_messages,
+    }
+
 # ---------------------------------------------------------------------------- #
 
 # ---------------------------------------------------------------------------- #
@@ -534,14 +557,17 @@ def build_graph() -> CompiledStateGraph:
     
     builder.add_node('agent', agent)
     builder.add_node('tools', execute_tool)
+    builder.add_node('summarize_conversation', summarize_conversation)
     
     builder.add_edge(START, 'agent')
     builder.add_edge('tools', 'agent')
+    builder.add_edge('summarize', END)
     builder.add_conditional_edges(
         'agent',
         route,
         {
             'tools': 'tools',
+            'summarize_conversation': 'summarize_conversation',
             'end': END,
         }
     )
