@@ -28,12 +28,10 @@ def open_support_ticket(
     priority: Literal['low', 'medium', 'high', 'critical'],
 ) -> OpenTicketOutput | Error:
     '''
-    Creates a new incident support ticket in the IT database. Only call this tool 
-    after the user has explicitly confirmed they want to open a ticket. Before 
-    calling, present the ticket details (title, category, priority) to the user 
-    and wait for a clear yes confirmation. Use the title and category from the 
-    fetch_issue_knowledge result, and map severity to priority directly. Never 
-    call this tool more than once per session for the same issue.
+    Create a support ticket for an unresolved or escalated issue.
+
+    Uses validated user, issue, category, and priority data. Returns the created ticket
+    identifier and initial status, or a structured error.
     '''
     
     try:
@@ -70,12 +68,10 @@ def update_support_ticket(
     note: str,
 ) -> UpdateTicketOutput | Error:
     '''
-    Updates the status of an existing support ticket in the IT database. Only call 
-    this tool after the user has explicitly confirmed the status change. Present 
-    the current status, the new status, and the reason to the user before calling. 
-    Use this tool when the user reports that their issue has been resolved, needs 
-    further investigation, or requires escalation. Always provide a clear note 
-    explaining the reason for the status change.
+    Update an existing support ticket status.
+
+    Records the new status and audit note. Returns the previous and updated status,
+    or a structured error.
     '''
     
     try:

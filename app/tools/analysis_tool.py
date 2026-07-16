@@ -23,14 +23,11 @@ KNOWLEDGE = _load_knowledge()
 @tool(args_schema=ClassifyValidateInput)
 def classify_and_validate(symptoms: list[str] | str, user_info: UserInfo) -> ClassifyValidateOutput:
     '''
-    Analyzes the user's reported symptoms and collected context to identify the 
-    most likely IT issue from the knowledge base. Use this tool once you have 
-    collected the user's symptoms and required context fields (device type, OS, 
-    app name if applicable). If is_valid is false, collect the missing fields 
-    listed in missing_fields before retrying. If confidence is below 0.3, ask 
-    the user a clarifying question before retrying. Do not call 
-    fetch_issue_knowledge until this tool returns is_valid: true and confidence 
-    is above 0.3.
+    Classify the issue from symptoms and validate required user context.
+
+    Returns the best matching knowledge-base issue, confidence score, missing fields,
+    and escalation flag. If no reliable match exists, returns UNKNOWN with low confidence.
+    confidence less 
     '''
 
     if isinstance(symptoms, list): symptoms = ' '.join(symptoms)
@@ -66,7 +63,7 @@ def classify_and_validate(symptoms: list[str] | str, user_info: UserInfo) -> Cla
     
     required_fields: list[str] = [
         'user_id',
-        'name',
+        'user_name',
         'device_type',
     ]
     
@@ -95,7 +92,7 @@ if __name__ == '__main__':
         'symptoms': 'I have a problem with microsoft office',
         'user_info': {
             'user_id': 'USR001',
-            'name': 'john',
+            'user_name': 'john',
             'device_type': 'laptop',
             'os': 'linux',
             'since_when': 'yesterday',

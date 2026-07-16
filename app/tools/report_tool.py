@@ -19,12 +19,10 @@ from app.tools.schema import (
 @tool(args_schema=GenerateReportInput)
 def generate_report(ticket_id: str, steps_provided: list[str], handoff_required: bool) -> Report | Error:
     '''
-    Generates a complete structured resolution report for a support session using 
-    the ticket ID. Call this tool at the end of every session after a ticket has 
-    been created or an existing ticket has been updated. The report includes all 
-    issue details, troubleshooting steps, ticket status, and whether human handoff 
-    is required. Present the report contents to the user as a session summary. If 
-    handoff_required is true, remind the user that a technician will follow up.
+    Generate a structured session report for an existing ticket.
+
+    Summarizes ticket details, user information, issue classification, provided steps,
+    and whether handoff is required.
     '''
     
     try:

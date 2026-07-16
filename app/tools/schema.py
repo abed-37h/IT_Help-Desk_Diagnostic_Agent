@@ -10,9 +10,9 @@ class IssueCategory(str, Enum):
     UNKNOWN = 'unknown'
 
 class UserInfo(BaseModel):
-    user_id: str
-    name: str
-    device_type: str
+    user_id: str | None = None
+    user_name: str | None = None
+    device_type: str | None = None
     os: Optional[str] = None
     app_name: Optional[str] = None
     since_when: Optional[str] = None
@@ -73,7 +73,7 @@ class UpdateTicketOutput(BaseModel):
 
 class GenerateReportInput(BaseModel):
     ticket_id: str
-    steps_provided: str
+    steps_provided: list[str]
     handoff_required: bool
 
 class ReportUser(BaseModel):
