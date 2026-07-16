@@ -502,7 +502,7 @@ def execute_tool(state: AgentState) -> AgentState:
                 logger.log_tool_error(tool_name, result.model_dump())
             else:
                 logger.log_tool_result(tool_name, result.model_dump())
-        except:
+        except Exception as e:
             result = Error(
                 error="tool_execution_error",
                 message=f"Failed to execute tool call: {str(e)}",
