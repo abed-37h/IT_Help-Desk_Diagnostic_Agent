@@ -1,407 +1,717 @@
 """
-app/ui/main.py — Streamlit interface for the IT Help-Desk Diagnostic Agent.
+Minimal Streamlit chat UI connected to the existing LangGraph orchestrator.
 
-Current purpose:
-- Connect Streamlit UI to MemoryManager.
-- Store user messages in short-term memory.
-- Store assistant messages in short-term memory.
-- Store intent, collected info, missing fields, confirmation state,
-  latest tool result, and workflow state in working memory.
-- Load and display persistent long-term memory from SQLite.
-- Show memory in the sidebar for debugging/observability.
+Only this UI file is changed. The tools and agent source files remain untouched.
 
-Placeholder logic will later be replaced by app/agent/orchestrator.py.
+The small compatibility layer in this file works around three issues in the
+current orchestrator implementation:
+1. build_graph() references a node named "summarize" that is not registered.
+2. route() contains an invalid len(...) expression.
+3. execute_tool() converts LangGraph approval interrupts into normal errors.
+
+The UI still uses the orchestrator's agent, tool handlers, invoke_agent(),
+resume_workflow(), is_interrupt(), and get_interrupt_metadata() functions.
 """
-from pathlib import Path
-import sys
 
-import streamlit as st
+from __future__ import annotations
+
+import sys
+import uuid
+from pathlib import Path
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.memory.memory_manager import MemoryManager
+import streamlit as st
+from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.errors import GraphInterrupt
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
+
+import app.agent.orchestrator as orchestrator
 
 
 st.set_page_config(
-    page_title="IT Help Desk Assistant",
+    page_title="IT Support Assistant",
     page_icon="🛠️",
-    layout="wide",
+    layout="centered",
 )
 
 
-# ---------------------------------------------------------------------------
-# Session state setup
-# ---------------------------------------------------------------------------
-def init_state() -> None:
+# Expose only the required deadline workflow tools at runtime.
+# This does not change any source file under app/agent or app/tools.
+orchestrator.tooled_llm = orchestrator.llm.bind_tools(
+    [
+        orchestrator.classify_and_validate,
+        orchestrator.fetch_issue_knowledge,
+        orchestrator.open_support_ticket,
+    ]
+)
+
+
+def route_for_ui(state: orchestrator.AgentState) -> str:
+    """Route assistant tool calls safely without changing orchestrator.py."""
+    messages = state.get("messages", [])
+
+    if not messages:
+        return "end"
+
+    last_message = messages[-1]
+
+    if getattr(last_message, "tool_calls", None):
+        return "tools"
+
+    return "end"
+
+
+def execute_tools_for_ui(
+    state: orchestrator.AgentState,
+) -> orchestrator.AgentState:
     """
-    Create one MemoryManager per Streamlit session.
+    Execute tool requests through the orchestrator's existing handlers.
 
-    Short-term and working memory live in Streamlit session state.
-    Long-term memory is persisted in the project SQLite database.
+    GraphInterrupt is re-raised so Streamlit receives the approval request.
     """
-    if "memory" not in st.session_state:
-        database_path = PROJECT_ROOT / "data" / "memory.db"
-        st.session_state.memory = MemoryManager(db_path=database_path)
+    messages = state.get("messages", [])
 
+    if not messages:
+        return {
+            "messages": [
+                AIMessage(
+                    content="No tool request was available to execute."
+                )
+            ]
+        }
 
-# ---------------------------------------------------------------------------
-# PLACEHOLDER LOGIC — replace with orchestrator calls later
-# ---------------------------------------------------------------------------
-def classify_intent(text: str) -> str:
-    """
-    Temporary intent classifier.
+    last_message = messages[-1]
+    tool_calls = getattr(last_message, "tool_calls", []) or []
 
-    Later, this will move to DiagnosticTool / orchestrator.
-    """
-    text = text.lower()
+    update: dict[str, Any] = {}
+    tool_messages: list[ToolMessage] = []
 
-    if "ticket" in text or "create a ticket" in text or "log this" in text:
-        return "create_ticket"
+    for tool_call in tool_calls:
+        tool_name = tool_call.get("name", "unknown_tool")
+        tool_args = tool_call.get("args", {}) or {}
+        tool_call_id = tool_call.get("id")
+        result: Any = None
 
-    if (
-        "vpn" in text
-        or "password" in text
-        or "printer" in text
-        or "wifi" in text
-        or "wi-fi" in text
-        or "network" in text
-        or "internet" in text
-    ):
-        return "troubleshoot_issue"
+        try:
+            orchestrator.logger.log_tool_execution(tool_name)
 
-    return "unsupported_request"
+            match tool_name:
+                case "classify_and_validate":
+                    result = orchestrator.handle_classification(
+                        state,
+                        tool_args,
+                    )
 
+                    update["classification_result"] = result.model_dump(
+                        mode="json"
+                    )
 
-def update_memory_for_troubleshooting(user_message: str) -> tuple[str, str]:
-    """
-    Placeholder troubleshooting logic.
+                    if not isinstance(result, orchestrator.Error):
+                        update["valid_user_info"] = result.is_valid
+                        update["issue_id"] = result.issue_id or None
 
-    Returns:
-        tool_name, reply_text
-    """
-    memory = st.session_state.memory
-    lowered = user_message.lower()
+                case "fetch_issue_knowledge":
+                    effective_state = {
+                        **state,
+                        **update,
+                    }
 
-    memory.set_intent("troubleshoot_issue")
-    memory.set_workflow_state("information_gathering")
+                    result = orchestrator.handle_fetch_kb(
+                        effective_state,
+                        tool_args,
+                    )
 
-    if "vpn" in lowered:
-        memory.collect_info("category", "network")
-        memory.collect_info("symptoms", ["VPN not connecting"])
-        memory.require_fields(["operating_system", "vpn_error_message"])
+                    update["knowledge_result"] = result.model_dump(
+                        mode="json"
+                    )
 
-        return (
-            "InfoTool (KnowledgeBaseTool)",
-            "I understand your VPN is not connecting. "
-            "Please tell me your device OS and the exact VPN error message you see.",
+                    if not isinstance(result, orchestrator.Error):
+                        category = result.category
+
+                        if hasattr(category, "value"):
+                            category = category.value
+
+                        update["category"] = category
+                        update["severity"] = result.severity
+                        update["steps"] = result.steps
+                        update["escalate"] = result.escalate
+
+                case "open_support_ticket":
+                    effective_state = {
+                        **state,
+                        **update,
+                    }
+
+                    result = orchestrator.handle_open_ticket(
+                        effective_state,
+                        tool_args,
+                    )
+
+                    update["open_ticket_result"] = result.model_dump(
+                        mode="json"
+                    )
+
+                    if not isinstance(result, orchestrator.Error):
+                        update["ticket_id"] = result.ticket_id
+                        update["ticket_status"] = result.status
+
+                case _:
+                    result = orchestrator.Error(
+                        error="unsupported_tool",
+                        message=(
+                            f"The deadline UI does not execute "
+                            f"the tool '{tool_name}'."
+                        ),
+                    )
+
+        except GraphInterrupt:
+            raise
+
+        except Exception as error:
+            result = orchestrator.Error(
+                error="tool_execution_error",
+                message=str(error),
+            )
+
+        if result is None:
+            result = orchestrator.Error(
+                error="empty_tool_result",
+                message=f"Tool '{tool_name}' returned no result.",
+            )
+
+        if isinstance(result, orchestrator.Error):
+            if result.error in {
+                "open_ticket_rejected",
+                "update_ticket_rejected",
+            }:
+                content = (
+                    "The user intentionally cancelled the action. "
+                    "No ticket was created or updated. "
+                    "This was not a technical failure."
+                )
+            else:
+                payload = result.model_dump(mode="json")
+                content = str(payload)
+
+                orchestrator.logger.log_tool_error(
+                    tool_name,
+                    payload,
+                )
+        else:
+            payload = result.model_dump(mode="json")
+            content = str(payload)
+
+            orchestrator.logger.log_tool_result(
+                tool_name,
+                payload,
+            )
+
+        tool_messages.append(
+            ToolMessage(
+                content=content,
+                tool_call_id=tool_call_id,
+                name=tool_name,
+            )
         )
 
-    if "wifi" in lowered or "wi-fi" in lowered or "internet" in lowered or "network" in lowered:
-        memory.collect_info("category", "network")
-        memory.collect_info("symptoms", ["network connectivity issue"])
-        memory.require_fields(["connection_type", "affected_devices"])
-
-        return (
-            "InfoTool (KnowledgeBaseTool)",
-            "This sounds like a network issue. "
-            "Are you using Wi-Fi or Ethernet, and is the issue only on your device?",
-        )
-
-    if "password" in lowered or "account" in lowered:
-        memory.collect_info("category", "account")
-        memory.collect_info("symptoms", ["account access issue"])
-        memory.require_fields(["account_type", "error_message"])
-
-        return (
-            "InfoTool (KnowledgeBaseTool)",
-            "This sounds like an account issue. "
-            "Which account are you trying to access, and what error message appears?",
-        )
-
-    if "printer" in lowered:
-        memory.collect_info("category", "hardware")
-        memory.collect_info("symptoms", ["printer issue"])
-        memory.require_fields(["printer_name", "error_message"])
-
-        return (
-            "InfoTool (KnowledgeBaseTool)",
-            "This sounds like a printer issue. "
-            "Please tell me the printer name and the error message shown.",
-        )
-
-    memory.collect_info("category", "unknown")
-    memory.collect_info("symptoms", [user_message])
-    memory.require_fields(["issue_details"])
-
-    return (
-        "Fallback",
-        "I can help troubleshoot this. "
-        "Please describe the device, application, and any error message.",
+    orchestrator.logger.log_state_update(
+        "ui_execute_tools",
+        update,
     )
 
+    return {
+        "messages": tool_messages,
+        **update,
+    }
 
-def request_ticket_confirmation(user_message: str) -> str:
-    """
-    Placeholder ticket confirmation logic.
 
-    Does not create a ticket immediately.
-    It only stores a pending confirmation in memory.
-    """
-    memory = st.session_state.memory
+def build_ui_graph() -> CompiledStateGraph:
+    """Build a minimal working graph around the existing orchestrator agent."""
+    builder = StateGraph(orchestrator.AgentState)
 
-    memory.set_intent("create_ticket")
-    memory.set_workflow_state("awaiting_confirmation")
-    memory.collect_info("ticket_summary", user_message)
-    memory.require_fields(["user_confirmation"])
+    builder.add_node(
+        "agent",
+        orchestrator.agent,
+    )
 
-    memory.request_confirmation(
-        action="create_ticket",
-        details={
-            "title": user_message,
-            "category": memory.get_context()["working"]["collected_info"].get("category", "unknown"),
-            "priority": "medium",
+    builder.add_node(
+        "tools",
+        execute_tools_for_ui,
+    )
+
+    builder.add_edge(
+        START,
+        "agent",
+    )
+
+    builder.add_conditional_edges(
+        "agent",
+        route_for_ui,
+        {
+            "tools": "tools",
+            "end": END,
         },
     )
 
-    return "I can create a support ticket for this. Please confirm using the button below."
+    builder.add_edge(
+        "tools",
+        "agent",
+    )
+
+    return builder.compile(
+        checkpointer=MemorySaver(),
+    )
 
 
-def run_placeholder_agent(user_message: str) -> tuple[str, str]:
+def initialize_state() -> None:
+    """Initialize the Streamlit session."""
+    defaults: dict[str, Any] = {
+        "graph": None,
+        "session_id": str(uuid.uuid4()),
+        "user_info": {},
+        "profile_complete": False,
+        "profile_sent": False,
+        "chat_messages": [],
+        "pending_interrupt": None,
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    if st.session_state.graph is None:
+        st.session_state.graph = build_ui_graph()
+
+
+def start_new_conversation(
+    keep_profile: bool = True,
+) -> None:
+    """Start a new LangGraph thread and optionally keep employee details."""
+    saved_profile = (
+        dict(st.session_state.user_info)
+        if keep_profile
+        else {}
+    )
+
+    st.session_state.graph = build_ui_graph()
+    st.session_state.session_id = str(uuid.uuid4())
+    st.session_state.chat_messages = []
+    st.session_state.pending_interrupt = None
+    st.session_state.profile_sent = False
+    st.session_state.user_info = saved_profile
+    st.session_state.profile_complete = bool(saved_profile)
+
+
+initialize_state()
+
+
+def message_to_text(content: Any) -> str:
+    """Convert LangChain message content into displayable text."""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        text_parts: list[str] = []
+
+        for part in content:
+            if isinstance(part, str):
+                text_parts.append(part)
+
+            elif isinstance(part, dict):
+                text = part.get("text")
+
+                if text:
+                    text_parts.append(str(text))
+
+        return "\n".join(text_parts)
+
+    return str(content)
+
+
+def get_last_assistant_text(
+    response: dict[str, Any],
+) -> str:
+    """Return the newest assistant message from a graph response."""
+    messages = response.get("messages", []) or []
+
+    for message in reversed(messages):
+        if isinstance(message, AIMessage):
+            text = message_to_text(message.content).strip()
+
+            if text:
+                return text
+
+    return ""
+
+
+def process_graph_response(
+    response: dict[str, Any],
+) -> None:
+    """Save either a pending approval or the assistant's final reply."""
+    if orchestrator.is_interrupt(response):
+        st.session_state.pending_interrupt = (
+            orchestrator.get_interrupt_metadata(response)
+        )
+        return
+
+    st.session_state.pending_interrupt = None
+
+    assistant_text = get_last_assistant_text(response)
+
+    if assistant_text:
+        st.session_state.chat_messages.append(
+            {
+                "role": "assistant",
+                "content": assistant_text,
+            }
+        )
+
+
+def build_orchestrator_message(
+    user_message: str,
+) -> str:
     """
-    Temporary agent logic until orchestrator.py is ready.
-
-    Returns:
-        tool_name, assistant_reply
+    Add employee context to the first message because the current
+    invoke_agent() function accepts only user_message and session_id.
     """
-    intent = classify_intent(user_message)
+    if st.session_state.profile_sent:
+        return user_message
 
-    if intent == "create_ticket":
-        reply = request_ticket_confirmation(user_message)
-        return "ActionTool (TicketTool)", reply
-
-    if intent == "troubleshoot_issue":
-        return update_memory_for_troubleshooting(user_message)
-
-    st.session_state.memory.set_intent("unsupported_request")
-    st.session_state.memory.set_workflow_state("human_handoff")
-    st.session_state.memory.collect_info("category", "unknown")
-    st.session_state.memory.require_fields(["supported_issue_type"])
+    profile = st.session_state.user_info
+    st.session_state.profile_sent = True
 
     return (
-        "Fallback",
-        "I'm not fully able to handle that yet. "
-        "I can help with network, account, operating system, application, or hardware issues.",
+        "Known employee information for this conversation:\n"
+        f"- user_name: {profile['user_name']}\n"
+        f"- user_id: {profile['user_id']}\n"
+        f"- device_type: {profile['device_type']}\n"
+        f"- os: {profile['os']}\n\n"
+        f"Employee issue:\n{user_message}"
     )
 
 
-# ---------------------------------------------------------------------------
-# UI helpers
-# ---------------------------------------------------------------------------
-def render_sidebar() -> None:
+st.markdown(
     """
-    Render session and memory information in the sidebar.
+    <style>
+        .block-container {
+            max-width: 900px;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
 
-    The sidebar displays:
-    - current user
-    - short-term memory
-    - working memory
-    - persistent long-term memory
+        [data-testid="stSidebar"] {
+            border-right: 1px solid rgba(128, 128, 128, 0.2);
+        }
 
-    Long-term preferences will later be written automatically
-    by the orchestrator.
-    """
-    memory = st.session_state.memory
-    context = memory.get_context()
+        .support-header {
+            padding: 1.1rem 1.25rem;
+            border: 1px solid rgba(128, 128, 128, 0.22);
+            border-radius: 14px;
+            margin-bottom: 1.25rem;
+        }
 
-    with st.sidebar:
-        st.subheader("Session")
+        .support-status {
+            font-size: 0.9rem;
+            opacity: 0.75;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-        user_name = context["short_term"]["user_name"]
 
-        if user_name:
-            st.success(f"Current user: {user_name}")
-        else:
-            st.warning("No user set yet.")
+with st.sidebar:
+    st.header("IT Support")
 
-        st.divider()
+    if st.session_state.profile_complete:
+        profile = st.session_state.user_info
 
-        st.subheader("Short-term Memory")
-        st.json(context["short_term"])
-
-        st.subheader("Working Memory")
-        st.json(context["working"])
-
-        st.subheader("Long-term Memory")
-        st.json(context["long_term"])
-
-        database_path = PROJECT_ROOT / "data" / "memory.db"
-
-        st.caption(
-            f"Database: {database_path}"
+        st.write(
+            f"**Employee:** {profile.get('user_name', '-')}"
+        )
+        st.write(
+            f"**Employee ID:** {profile.get('user_id', '-')}"
+        )
+        st.write(
+            f"**Device:** {profile.get('device_type', '-')}"
+        )
+        st.write(
+            f"**OS:** {profile.get('os', '-')}"
         )
 
         st.divider()
 
-        if st.button("Reset current task"):
-            memory.reset_current_task()
+        if st.button(
+            "New conversation",
+            use_container_width=True,
+        ):
+            start_new_conversation(
+                keep_profile=True
+            )
             st.rerun()
 
-        if st.button("Reset session memory"):
-            memory.reset_all()
-            st.rerun()
-
-
-def render_chat_history() -> None:
-    """
-    Render chat messages stored inside MemoryManager.
-    """
-    context = st.session_state.memory.get_context()
-    messages = context["short_term"]["recent_messages"]
-
-    for message in messages:
-        role = message["role"]
-        content = message["content"]
-        tool = message.get("tool")
-
-        if role in {"user", "assistant"}:
-            with st.chat_message(role):
-                st.markdown(content)
-                if tool:
-                    st.caption(f"🔧 Tool used: {tool}")
-
-
-def handle_name_capture() -> bool:
-    """
-    Capture and validate the user's name before starting the chat.
-
-    Returns:
-        True if a valid user is already known.
-        False if the application is still waiting for a name.
-    """
-    memory = st.session_state.memory
-    context = memory.get_context()
-
-    if context["short_term"]["user_name"] is not None:
-        return True
-
-    name = st.chat_input(
-        "Before we start, what's your name?"
-    )
-
-    if name:
-        try:
-            memory.set_user(name)
-        except ValueError as error:
-            st.error(str(error))
-            return False
-
-        memory.set_workflow_state("awaiting_user")
-
-        cleaned_name = memory.get_context()["short_term"]["user_name"]
-
-        greeting = (
-            f"Nice to meet you, {cleaned_name}! "
-            "What IT issue can I help with today?"
+    if st.button(
+        "Reset everything",
+        use_container_width=True,
+    ):
+        start_new_conversation(
+            keep_profile=False
         )
-
-        memory.add_assistant_message(greeting)
-
         st.rerun()
 
-    return False
 
-
-def handle_pending_confirmation() -> bool:
+st.markdown(
     """
-    Handle confirmation gate before state-changing actions.
-
-    Returns:
-        True if confirmation is pending and input should be blocked.
-        False if no confirmation is pending.
-    """
-    memory = st.session_state.memory
-    context = memory.get_context()
-    pending = context["working"]["pending_confirmation"]
-
-    if not pending:
-        return False
-
-    st.warning(f"Confirm action: **{pending['action']}**")
-
-    col1, col2 = st.columns(2)
-
-    if col1.button("✅ Confirm"):
-        confirmed_action = memory.confirm_action()
-
-        # Placeholder ticket creation.
-        # Later this will call TicketTool.
-        ticket_id = "TCK-0003"
-
-        memory.store_tool_result(
-            tool_name="TicketTool",
-            result={
-                "ticket_id": ticket_id,
-                "status": "open",
-                "confirmed_action": confirmed_action,
-            },
-        )
-
-        memory.set_workflow_state("reporting")
-
-        reply = f"Ticket **{ticket_id}** has been created. You'll get updates by email."
-        memory.add_assistant_message(reply, tool="ActionTool (TicketTool)")
-
-        st.rerun()
-
-    if col2.button("❌ Cancel"):
-        memory.cancel_action()
-
-        reply = "Okay, I won't create a ticket."
-        memory.add_assistant_message(reply)
-
-        st.rerun()
-
-    return True
+    <div class="support-header">
+        <h2 style="margin: 0;">IT Support Assistant</h2>
+        <div class="support-status">
+            ● Online · Guided troubleshooting and ticket escalation
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
-# ---------------------------------------------------------------------------
-# Main UI
-# ---------------------------------------------------------------------------
-def main() -> None:
-    init_state()
-
-    st.title("IT Help Desk Assistant 🛠️")
+if not st.session_state.profile_complete:
+    st.subheader("Employee details")
     st.caption(
-        "This assistant provides decision support for common IT issues. "
-        "It does not replace your IT department for urgent or critical problems."
+        "Enter the information required by the diagnostic workflow."
     )
 
-    render_sidebar()
+    with st.form(
+        "employee_profile_form",
+        clear_on_submit=False,
+    ):
+        user_name = st.text_input(
+            "Name",
+            placeholder="Mohamad",
+        )
 
-    if not handle_name_capture():
-        return
+        user_id = st.text_input(
+            "Employee ID",
+            placeholder="EMP-001",
+        )
 
-    render_chat_history()
+        device_type = st.selectbox(
+            "Device type",
+            [
+                "Laptop",
+                "Desktop",
+                "Mobile",
+                "Tablet",
+                "Other",
+            ],
+        )
 
-    if handle_pending_confirmation():
-        return
+        operating_system = st.selectbox(
+            "Operating system",
+            [
+                "Windows 11",
+                "Windows 10",
+                "macOS",
+                "Linux",
+                "Android",
+                "iOS",
+                "Other",
+            ],
+        )
 
-    user_input = st.chat_input("Describe your issue...")
+        submitted = st.form_submit_button(
+            "Start support session",
+            type="primary",
+            use_container_width=True,
+        )
 
-    if user_input:
-        memory = st.session_state.memory
+    if submitted:
+        cleaned_name = " ".join(
+            user_name.split()
+        )
 
-        memory.add_user_message(user_input)
+        cleaned_user_id = (
+            user_id.strip().upper()
+        )
 
-        tool_name, reply = run_placeholder_agent(user_input)
+        if not cleaned_name:
+            st.error(
+                "Please enter your name."
+            )
 
-        memory.add_assistant_message(reply, tool=tool_name)
+        elif not cleaned_user_id:
+            st.error(
+                "Please enter your employee ID."
+            )
+
+        else:
+            st.session_state.user_info = {
+                "user_name": cleaned_name,
+                "user_id": cleaned_user_id,
+                "device_type": device_type.lower(),
+                "os": operating_system,
+            }
+
+            st.session_state.profile_complete = True
+
+            st.session_state.chat_messages = [
+                {
+                    "role": "assistant",
+                    "content": (
+                        f"Hello {cleaned_name}. "
+                        "Describe the IT issue you are experiencing."
+                    ),
+                }
+            ]
+
+            st.rerun()
+
+    st.stop()
+
+
+for chat_message in st.session_state.chat_messages:
+    with st.chat_message(
+        chat_message["role"]
+    ):
+        st.markdown(
+            chat_message["content"]
+        )
+
+
+pending_interrupt = (
+    st.session_state.pending_interrupt
+)
+
+if pending_interrupt:
+    st.warning(
+        pending_interrupt.get(
+            "content",
+            "The agent needs your approval.",
+        )
+    )
+
+    confirm_column, cancel_column = (
+        st.columns(2)
+    )
+
+    with confirm_column:
+        if st.button(
+            "Confirm",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state.pending_interrupt = None
+
+            try:
+                with st.spinner(
+                    "Executing approved action..."
+                ):
+                    response = orchestrator.resume_workflow(
+                        graph=st.session_state.graph,
+                        feedback=True,
+                        session_id=st.session_state.session_id,
+                    )
+
+                process_graph_response(
+                    response
+                )
+
+            except Exception as error:
+                st.session_state.chat_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "The approved action could not be completed. "
+                            f"Details: {error}"
+                        ),
+                    }
+                )
+
+            st.rerun()
+
+    with cancel_column:
+        if st.button(
+            "Cancel",
+            use_container_width=True,
+        ):
+            st.session_state.pending_interrupt = None
+
+            try:
+                response = orchestrator.resume_workflow(
+                    graph=st.session_state.graph,
+                    feedback=False,
+                    session_id=st.session_state.session_id,
+                )
+
+                process_graph_response(
+                    response
+                )
+
+            except Exception as error:
+                st.session_state.chat_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "The cancellation could not be processed. "
+                            f"Details: {error}"
+                        ),
+                    }
+                )
+
+            st.rerun()
+
+    st.stop()
+
+
+user_message = st.chat_input(
+    "Describe your IT issue..."
+)
+
+if user_message:
+    cleaned_message = user_message.strip()
+
+    if cleaned_message:
+        st.session_state.chat_messages.append(
+            {
+                "role": "user",
+                "content": cleaned_message,
+            }
+        )
+
+        orchestrator_message = (
+            build_orchestrator_message(
+                cleaned_message
+            )
+        )
+
+        try:
+            with st.spinner(
+                "Analyzing your issue..."
+            ):
+                response = orchestrator.invoke_agent(
+                    graph=st.session_state.graph,
+                    user_message=orchestrator_message,
+                    session_id=st.session_state.session_id,
+                )
+
+            process_graph_response(
+                response
+            )
+
+        except Exception as error:
+            st.session_state.chat_messages.append(
+                {
+                    "role": "assistant",
+                    "content": (
+                        "The support workflow encountered an error. "
+                        f"Details: {error}"
+                    ),
+                }
+            )
 
         st.rerun()
-
-
-if __name__ == "__main__":
-    main()
