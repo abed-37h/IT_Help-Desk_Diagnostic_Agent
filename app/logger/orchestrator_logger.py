@@ -13,6 +13,12 @@ def log_tool_execution(tool_name: str) -> None:
 def log_tool_result(tool_name: str, result: dict) -> None:
     log_event(orchestrator_logger, 'tool_result', tool=tool_name, result=result)
 
+def log_tool_error(tool_name: str, error: dict) -> None:
+    log_error(orchestrator_logger, f'Tool {tool_name} error: {error["error"]} | {error["message"]}', tool=tool_name, error=error)
+
+def log_llm_error(llm_action: str, error_type: str, error: str) -> None:
+    log_error(orchestrator_logger, f'LLM {llm_action} error: {error}', llm_action=llm_action, error_type=error_type, error=error)
+
 def log_state_update(where: str, update: dict) -> None:
     log_event(orchestrator_logger, 'state_update', where=where, update=update)
 

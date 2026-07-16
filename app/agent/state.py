@@ -15,6 +15,7 @@ class WorkflowStage(Enum):
 
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
+    summary: Optional[str]
 
     # Gathering
     symptoms: List[str]
