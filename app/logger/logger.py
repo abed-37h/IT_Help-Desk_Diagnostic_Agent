@@ -10,5 +10,5 @@ def get_logger(name: str) -> logging.Logger:
 def log_event(logger: logging.Logger, event: str, **kwargs) -> None:
     logger.info(f'Event: {event}', extra=kwargs)
 
-def log_error(logger: logging.Logger, error: str, **kwargs) -> None:
-    logger.error(f'Error: {error}', extra=kwargs)
+def log_error(logger: logging.Logger, error: str, error_message: str, **kwargs) -> None:
+    logger.error(f'{error}: {error_message}', extra=kwargs)
