@@ -21,7 +21,6 @@ from app.tools.schema import UserInfo, IssueCategory, Error
 
 from app.agent.state import AgentState
 from app.agent.prompt import SYSTEM_PROMPT
-from app.agent.utils import format_report
 
 import app.logger.orchestrator_logger as logger
 
@@ -439,7 +438,7 @@ def route(state: AgentState) -> str:
     last_message = state['messages'][-1]
     if getattr(last_message, "tool_calls", None):
         return 'tools'
-    if len(state['messages'] > 6):
+    if len(state['messages']) > 6:
         return 'summarize_conversation'
     return 'end'
 
@@ -561,7 +560,7 @@ def build_graph() -> CompiledStateGraph:
     
     builder.add_edge(START, 'agent')
     builder.add_edge('tools', 'agent')
-    builder.add_edge('summarize', END)
+    builder.add_edge('summarize_conversation', END)
     builder.add_conditional_edges(
         'agent',
         route,
