@@ -1900,7 +1900,7 @@ for chat_message in st.session_state.chat_messages:
         )
     )
 
-    avatar = "👤" if role == "user" else ""
+    avatar = "👤" if role == "user" else "🛠️"
 
     with st.chat_message(
         role,
