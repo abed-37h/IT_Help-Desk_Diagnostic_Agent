@@ -54,7 +54,7 @@ from app.data.init_db import connect
 
 st.set_page_config(
     page_title="IT Support Assistant",
-    page_icon="",
+    page_icon="🛠️",
     layout="centered",
     initial_sidebar_state="expanded",
 )
@@ -1755,7 +1755,7 @@ if not st.session_state.profile_complete:
             with first_column:
                 user_name = st.text_input(
                     "Full name",
-                    placeholder="Adam",
+                    placeholder="Mohamad",
                 )
 
             with second_column:
@@ -1900,7 +1900,7 @@ for chat_message in st.session_state.chat_messages:
         )
     )
 
-    avatar = "👤" if role == "user" else ""
+    avatar = "👤" if role == "user" else "🛠️"
 
     with st.chat_message(
         role,
