@@ -1755,7 +1755,7 @@ if not st.session_state.profile_complete:
             with first_column:
                 user_name = st.text_input(
                     "Full name",
-                    placeholder="Mohamad",
+                    placeholder="Adam",
                 )
 
             with second_column:
