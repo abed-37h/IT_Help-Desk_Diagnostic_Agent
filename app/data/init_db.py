@@ -19,14 +19,14 @@ from typing import Optional
 # 1) project root: init_db.py
 # 2) app/: app/init_db.py
 # 3) app/data/: app/data/init_db.py
-THIS_DIR = Path(__file__).resolve().parent
+DB_DIR = Path(__file__).resolve().parent
 
-if THIS_DIR.name == "data":
-    DATA_DIR = THIS_DIR
-elif THIS_DIR.name == "app":
-    DATA_DIR = THIS_DIR / "data"
+if DB_DIR.name == "data":
+    DATA_DIR = DB_DIR / "db"
+elif DB_DIR.name == "app":
+    DATA_DIR = DB_DIR / "data" / "db"
 else:
-    DATA_DIR = THIS_DIR / "app" / "data"
+    DATA_DIR = DB_DIR / "app" / "data" / "db"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "tickets.db"
